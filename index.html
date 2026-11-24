@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1c1410">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Battle Sticks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game">
+  <canvas id="view"></canvas>
+
+  <div id="ui">
+    <!-- ================= TITLE ================= -->
+    <section id="scr-title" class="screen">
+      <div class="title-wrap">
+        <div class="logo"><span class="l1">BATTLE</span><span class="l2">STICKS</span></div>
+        <div class="tagline">Summon your stick army &middot; Smash the enemy fortress</div>
+        <button class="btn btn-big btn-yellow" id="btn-play">PLAY</button>
+        <div class="title-row">
+          <button class="btn btn-small" id="btn-howto">How to Play</button>
+          <button class="btn btn-small" id="btn-settings-title">Settings</button>
+          <button class="btn btn-small" id="btn-fullscreen">Fullscreen</button>
+        </div>
+      </div>
+      <div class="title-foot">Tip: use keys 1-0 to summon, Q to upgrade wallet, Space for Thunder</div>
+    </section>
+
+    <!-- ================= MAP ================= -->
+    <section id="scr-map" class="screen">
+      <div class="topbar">
+        <button class="btn btn-small" data-go="title">&#9664; Title</button>
+        <div class="topbar-title">World Map</div>
+        <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+      </div>
+      <div id="map-nodes"></div>
+      <div class="bottombar">
+        <button class="btn btn-mid btn-blue" id="btn-barracks">Barracks</button>
+        <button class="btn btn-mid btn-green" id="btn-lab">Upgrades</button>
+        <button class="btn btn-mid btn-purple" id="btn-endless">Endless Arena</button>
+        <button class="btn btn-mid" id="btn-settings-map">Settings</button>
+      </div>
+    </section>
+
+    <!-- ================= BARRACKS ================= -->
+    <section id="scr-barracks" class="screen menu-screen">
+      <div class="topbar">
+        <button class="btn btn-small" data-go="map">&#9664; Map</button>
+        <div class="topbar-title">Barracks</div>
+        <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+      </div>
+      <div class="menu-sub">Spend XP to level up your stickmen. Each level adds +15% health and damage.</div>
+      <div id="barracks-grid"></div>
+    </section>
+
+    <!-- ================= LAB ================= -->
+    <section id="scr-lab" class="screen menu-screen">
+      <div class="topbar">
+        <button class="btn btn-small" data-go="map">&#9664; Map</button>
+        <div class="topbar-title">Upgrades</div>
+        <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+      </div>
+      <div class="menu-sub">Permanent upgrades that apply to every battle.</div>
+      <div id="lab-list"></div>
+    </section>
+
+    <!-- ================= BATTLE ================= -->
+    <section id="scr-battle" class="screen">
+      <div id="hud">
+        <div class="hud-left">
+          <button class="icon-btn" id="btn-pause" title="Pause (P)">
+            <svg viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
+          </button>
+          <div class="basebox you">
+            <div class="bb-label">YOUR TOWER</div>
+            <div class="bar"><div class="fill" id="hp-you"></div></div>
+            <div class="bb-num" id="hp-you-n">0</div>
+          </div>
+        </div>
+        <div class="hud-mid">
+          <div class="wavebox">
+            <div id="wave-label">WAVE 1/5</div>
+            <div class="wavebar"><div id="wave-fill"></div></div>
+          </div>
+          <canvas id="minimap"></canvas>
+        </div>
+        <div class="hud-right">
+          <div class="basebox enemy">
+            <div class="bb-label" id="enemy-label">ENEMY FORTRESS</div>
+            <div class="bar"><div class="fill" id="hp-enemy"></div></div>
+            <div class="bb-num" id="hp-enemy-n">0</div>
+          </div>
+          <button class="icon-btn speed" id="btn-speed" title="Game speed (F)">1x</button>
+        </div>
+      </div>
+
+      <div id="bossbar" class="hidden">
+        <div class="boss-name" id="boss-name">BOSS</div>
+        <div class="bar"><div class="fill" id="boss-fill"></div></div>
+      </div>
+
+      <div id="banner-wrap"></div>
+      <div id="tip" class="hidden"></div>
+
+      <div id="panel">
+        <div id="wallet">
+          <div class="gold-row"><i class="coin big"></i><span id="gold-n">0</span><small>/<span id="gold-max">0</span></small></div>
+          <div class="rate-row">+<span id="gold-rate">0</span>/s</div>
+          <button class="btn btn-wallet" id="btn-wallet" title="Upgrade wallet (Q)">
+            <span class="wl">WALLET LV <b id="wallet-lv">1</b></span>
+            <span class="wc" id="wallet-cost-wrap"><i class="coin"></i><b id="wallet-cost">0</b></span>
+          </button>
+        </div>
+        <div id="slots"></div>
+        <button id="btn-thunder" title="Thunder strike (Space)">
+          <div class="th-ring"><div class="th-core">
+            <svg viewBox="0 0 24 24"><path d="M13.5 1 4 13.5h6.2L8.8 23 20 9.8h-6.6z"/></svg>
+          </div></div>
+          <div class="th-label">THUNDER</div>
+          <div class="th-pct" id="th-pct">0%</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================= OVERLAYS ================= -->
+    <div id="ov-level" class="overlay">
+      <div class="card level-card">
+        <button class="close-x" data-close>&times;</button>
+        <div class="lc-head">
+          <div class="lc-num" id="lc-num">1</div>
+          <div>
+            <div class="lc-name" id="lc-name">Level</div>
+            <div class="lc-region" id="lc-region">Region</div>
+          </div>
+          <div class="lc-stars" id="lc-stars"></div>
+        </div>
+        <div class="lc-desc" id="lc-desc"></div>
+        <div class="lc-sec">Enemies spotted</div>
+        <div class="lc-enemies" id="lc-enemies"></div>
+        <div class="lc-info" id="lc-info"></div>
+        <button class="btn btn-big btn-yellow" id="btn-go">BATTLE!</button>
+      </div>
+    </div>
+
+    <div id="ov-pause" class="overlay">
+      <div class="card pause-card">
+        <h2>PAUSED</h2>
+        <div class="pause-level" id="pause-level"></div>
+        <button class="btn btn-mid btn-yellow" id="btn-resume">Resume</button>
+        <button class="btn btn-mid" id="btn-restart">Restart</button>
+        <button class="btn btn-mid" id="btn-settings-pause">Settings</button>
+        <button class="btn btn-mid btn-red" id="btn-quit">Retreat to Map</button>
+      </div>
+    </div>
+
+    <div id="ov-result" class="overlay">
+      <div class="card result-card">
+        <h1 id="res-title">VICTORY!</h1>
+        <div class="res-stars" id="res-stars"></div>
+        <div class="res-stats" id="res-stats"></div>
+        <div class="res-reward" id="res-reward"></div>
+        <div class="res-unlock hidden" id="res-unlock">
+          <canvas id="res-unlock-cv" width="160" height="140"></canvas>
+          <div><div class="ru-tag">NEW UNIT UNLOCKED!</div><div class="ru-name" id="res-unlock-name"></div><div class="ru-desc" id="res-unlock-desc"></div></div>
+        </div>
+        <div class="res-btns">
+          <button class="btn btn-mid" id="btn-res-map">Map</button>
+          <button class="btn btn-mid btn-blue" id="btn-res-retry">Retry</button>
+          <button class="btn btn-mid btn-yellow" id="btn-res-next">Next Level &#9654;</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="ov-settings" class="overlay">
+      <div class="card settings-card">
+        <button class="close-x" data-close>&times;</button>
+        <h2>Settings</h2>
+        <label class="toggle"><input type="checkbox" id="set-sfx"><span>Sound effects</span></label>
+        <label class="toggle"><input type="checkbox" id="set-music"><span>Music</span></label>
+        <label class="toggle"><input type="checkbox" id="set-shake"><span>Screen shake</span></label>
+        <label class="toggle"><input type="checkbox" id="set-autocam"><span>Camera follows the battle</span></label>
+        <button class="btn btn-small btn-red" id="btn-reset">Reset all progress</button>
+      </div>
+    </div>
+
+    <div id="ov-howto" class="overlay">
+      <div class="card howto-card">
+        <button class="close-x" data-close>&times;</button>
+        <h2>How to Play</h2>
+        <ol>
+          <li><b>Summon</b> stickmen with the cards at the bottom (or keys <kbd>1</kbd>-<kbd>0</kbd>). Each costs gold and has a cooldown.</li>
+          <li>Your stickmen march right automatically and fight anything in their way.</li>
+          <li><b>Gold</b> refills over time and from defeated enemies. Upgrade your <b>Wallet</b> (<kbd>Q</kbd>) to earn faster and hold more.</li>
+          <li><b>Thunder</b> (<kbd>Space</kbd>) charges up over time: it strikes every nearby enemy, knocking them back.</li>
+          <li><b>Destroy the enemy fortress</b> before they destroy your tower! Hitting the fortress hard makes the enemy angry...</li>
+          <li>Drag the battlefield, use the minimap or <kbd>A</kbd>/<kbd>D</kbd> to look around. <kbd>F</kbd> toggles 2x speed, <kbd>P</kbd> pauses.</li>
+          <li>Win to earn <b>XP</b> and unlock new stickmen. Spend XP in the <b>Barracks</b> and <b>Upgrades</b>.</li>
+        </ol>
+        <button class="btn btn-mid btn-yellow" data-close>Got it!</button>
+      </div>
+    </div>
+
+    <div id="ov-confirm" class="overlay">
+      <div class="card confirm-card">
+        <h2 id="cf-title">Are you sure?</h2>
+        <p id="cf-text"></p>
+        <div class="res-btns">
+          <button class="btn btn-mid" id="cf-no">Cancel</button>
+          <button class="btn btn-mid btn-red" id="cf-yes">Yes</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+</div>
+
+<div id="rotate-hint">
+  <div class="rh-card">
+    <div class="rh-icon">&#8635;</div>
+    <div>Rotate your device to landscape for the best experience</div>
+    <button class="btn btn-small btn-yellow" id="btn-rotate-ok">Play anyway</button>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/stickman.js"></script>
+<script src="js/scenery.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
