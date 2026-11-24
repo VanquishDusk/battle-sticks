@@ -57,3 +57,9 @@ Progress is saved automatically in `localStorage`.
 | `js/main.js` | Boot, resize and main loop |
 
 To tweak balance, edit the stat tables in `js/data.js`.
+
+## Deploying to GitHub Pages
+
+The workflow in `.github/workflows/pages.yml` publishes the game on every push to `main` (or run it manually from the Actions tab).
+One-time setup: in the repository go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+The site will be at `https://<user>.github.io/battle-sticks/`.
