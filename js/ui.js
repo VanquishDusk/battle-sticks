@@ -24,13 +24,14 @@ const UI = (() => {
   let toastT = null;
   let currentLevel = null; // level card selection
   let barracksCanvases = [];
+  let bkTab = 'units', dkSel = null;
 
   // ---------------- generic ----------------
   function show(name) {
     $$('.screen').forEach(s => s.classList.toggle('active', s.id === 'scr-' + name));
     Game.screen = name;
     if (name === 'map') refreshMap();
-    if (name === 'barracks') buildBarracks();
+    if (name === 'barracks') { buildBarracks(); buildDeck(); setBkTab(bkTab); }
     if (name === 'lab') buildLab();
     refreshXP();
     Sound.startMusic(name === 'battle' ? 'battle' : 'menu');
@@ -178,7 +179,92 @@ const UI = (() => {
       barracksCanvases.push({ cv, def, unlocked });
     }
   }
+  // ---------------- deck editor (barracks) ----------------
+  function setBkTab(tab) {
+    bkTab = tab;
+    $$('.bk-tab').forEach(b => b.classList.toggle('active', b.dataset.bk === tab));
+    $('#barracks-grid').classList.toggle('hidden', tab !== 'units');
+    $('#deck-view').classList.toggle('hidden', tab !== 'deck');
+    if (tab === 'deck') buildDeck();
+  }
+  const unitDef = id => HERO_BY_ID[id] || UNIT_BY_ID[id];
+  const isLocked = def => !def.hero && !Progress.isUnitUnlocked(def);
+  function deckCard(def, cls, extra) {
+    const locked = isLocked(def);
+    const el = U.el('button', `dk-card ${cls}${def.hero ? ' hero r-' + def.rarity : ''}${locked ? ' locked' : ''}`);
+    el.style.setProperty('--c', def.color);
+    const tag = def.hero ? `<span class="dk-r">${RARITY[def.rarity].id}</span>` : '';
+    el.innerHTML = `${extra || ''}${tag}${def.exclusive ? '<span class="dk-ex">EXCLUSIVE</span>' : ''}<canvas></canvas>
+      <div class="dk-name">${locked ? '???' : def.short}</div>
+      <div class="dk-cost">${locked ? `<small>Level ${def.unlock}</small>` : `<i class="coin"></i>${def.cost}`}</div>`;
+    Stick.renderIcon(el.querySelector('canvas'), def, 0, { w: 96, h: 70, scale: 0.88 });
+    return el;
+  }
+  function buildDeck() {
+    const sq = Meta.squad();
+    const slotsEl = $('#deck-slots'); slotsEl.innerHTML = '';
+    sq.forEach((id, i) => {
+      const def = unitDef(id);
+      const el = deckCard(def, 'slot-card' + (dkSel && dkSel.slot === i ? ' sel' : '') + (dkSel && dkSel.id ? ' target' : ''), `<span class="dk-key">${(i + 1) % 10}</span>`);
+      el.addEventListener('click', () => deckClick({ slot: i }));
+      slotsEl.appendChild(el);
+    });
+    const pool = $('#deck-pool'); pool.innerHTML = '';
+    const owned = [...UNITS, ...HEROES.filter(h => Save.d.heroes[h.id]).sort((a, b) => RARITY[b.rarity].idx - RARITY[a.rarity].idx)];
+    for (const def of owned) {
+      const inDeck = sq.indexOf(def.id);
+      const el = deckCard(def, 'pool-card' + (dkSel && dkSel.id === def.id ? ' sel' : '') + (inDeck >= 0 ? ' indeck' : ''),
+        inDeck >= 0 ? `<span class="dk-in">IN DECK &middot; ${(inDeck + 1) % 10}</span>` : '');
+      el.addEventListener('click', () => deckClick({ id: def.id }));
+      pool.appendChild(el);
+    }
+    const heroes = HEROES.filter(h => Save.d.heroes[h.id]).length;
+    $('#dk-count').textContent = `${UNITS.filter(u => Progress.isUnitUnlocked(u)).length} regular units · ${heroes}/${HEROES.length} Stickfigures`;
+    renderDeckInfo();
+  }
+  function deckClick(pick) {
+    const sq = Meta.squad();
+    if (pick.id) {
+      const def = unitDef(pick.id);
+      if (isLocked(def)) { Sound.play('error'); toast(`Clear Level ${def.unlock} to unlock ${def.name}`); return; }
+      if (dkSel && dkSel.slot != null) { place(pick.id, dkSel.slot); return; }
+      dkSel = dkSel && dkSel.id === pick.id ? null : pick;
+    } else {
+      if (dkSel && dkSel.id) { place(dkSel.id, pick.slot); return; }
+      if (dkSel && dkSel.slot != null && dkSel.slot !== pick.slot) { place(sq[dkSel.slot], pick.slot); return; }
+      dkSel = dkSel && dkSel.slot === pick.slot ? null : pick;
+    }
+    click();
+    buildDeck();
+  }
+  function place(id, slot) {
+    const before = Meta.squad()[slot];
+    if (Meta.equip(id, slot)) {
+      Sound.play('summon', 0);
+      if (before !== id && !Meta.squad().includes(before)) toast(`${unitDef(id).short} replaced ${unitDef(before).short}`);
+    }
+    dkSel = null;
+    buildDeck();
+  }
+  function renderDeckInfo() {
+    const box = $('#deck-info');
+    const id = dkSel ? dkSel.id || Meta.squad()[dkSel.slot] : null;
+    if (!id) {
+      box.className = '';
+      box.innerHTML = '<b>Tap a unit</b> then a deck slot to swap it in &mdash; or tap two deck slots to reorder them. Summoned Stickfigures fight alongside your regular units.';
+      return;
+    }
+    const def = unitDef(id), lv = def.hero ? Save.d.heroes[id].lv : Progress.unitLv(id);
+    const m = def.hero ? Meta.heroMult(lv) : Progress.unitMult(lv);
+    box.className = def.hero ? 'r-' + def.rarity : '';
+    box.innerHTML = `<div class="di-name">${def.name} <small>${def.hero ? RARITY[def.rarity].name + ' · ' : ''}${def.role} · Lv ${lv}</small></div>
+      <div class="di-ab">${def.ability || def.desc}</div>
+      <div class="di-stats">HP <b>${U.fmt(def.hp * m)}</b> · ${def.attack === 'heal' ? 'Heal' : 'DMG'} <b>${U.fmt((def.attack === 'heal' ? def.heal : def.dmg) * m)}</b> · Range <b>${def.range}</b> · Cost <b>${def.cost}</b> · CD <b>${def.cd}s</b></div>
+      <div class="di-hint">${dkSel.id ? 'Now tap a deck slot to place it.' : 'Tap a unit below to swap it into this slot, or another slot to swap places.'}</div>`;
+  }
+
   function animateBarracks(t) {
+    if (bkTab !== 'units') return;
     for (const c of barracksCanvases) {
       const def = c.def;
       Stick.renderIcon(c.cv, def, 0, { w: 220, h: 92, scale: def.scale > 1.5 ? 0.86 : 0.92, t, mode: c.unlocked ? 'anim' : 'idle' });
@@ -590,6 +676,9 @@ const UI = (() => {
 
     $('#btn-barracks').addEventListener('click', () => { click(); show('barracks'); });
     $('#btn-lab').addEventListener('click', () => { click(); show('lab'); });
+    $$('.bk-tab').forEach(b => b.addEventListener('click', () => { click(); dkSel = null; setBkTab(b.dataset.bk); }));
+    $('#btn-dk-reset').addEventListener('click', () => { click(); Meta.resetSquad(); dkSel = null; buildDeck(); });
+    $('#btn-dk-summon').addEventListener('click', () => { click(); show('summon'); });
     $('#btn-endless').addEventListener('click', () => {
       if (!Progress.isEndlessUnlocked()) { Sound.play('error'); toast(`Clear level ${ENDLESS.unlockAfter} to unlock!`); return; }
       click(); openLevel(ENDLESS);

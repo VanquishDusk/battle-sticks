@@ -106,8 +106,48 @@ const HEROES = [
     cost: 430, cd: 13, hp: 280, dmg: 62, rate: 2.1, range: 240, speed: 38, kb: 1, aoe: 75, kbChance: 0.35,
     attack: 'magic', anim: 'staff', animDur: 0.65, color: '#06b6d4', hold: { shF: 0.4, elF: 0.9 },
     look: { weapon: 'staff', head: ['hood'], hoodColor: '#0891b2', aura: '#67e8f9', ink: '#164e63' } },
+
+  // ----- Gacha exclusives with unique mechanics -----
+  { id: 'h_drummer', rarity: 'SR', exclusive: true, name: 'Rally Drummer', short: 'Drummer', role: 'Buffer',
+    desc: 'Keeps the beat so the whole army fights in rhythm. Never attacks, never stops drumming.',
+    ability: 'War Beat: allies within 170px deal +35% damage, attack 30% faster and march 15% faster.',
+    cost: 240, cd: 9, hp: 320, dmg: 0, rate: 1, range: 150, speed: 44, kb: 1,
+    attack: 'none', anim: 'drum', animDur: 0.6, loopAnim: true, aura: { r: 170, every: 0.5, dur: 1.2 }, color: '#dc2626',
+    hold: { shF: 0.9, elF: 1.2, shB: 0.8, elB: 1.3 }, look: { weapon: 'drumsticks', front: 'drum', head: ['plume'] } },
+  { id: 'h_architect', rarity: 'SR', exclusive: true, name: 'Pencil Architect', short: 'Architect', role: 'Builder',
+    desc: 'Sketches a barricade in seconds, then argues with it about the blueprints.',
+    ability: 'Blueprint Wall: builds a sturdy barricade ahead of the army that blocks enemies for 20s.',
+    cost: 280, cd: 12, hp: 260, dmg: 0, rate: 10, range: 170, speed: 42, kb: 1,
+    attack: 'build', anim: 'build', animDur: 0.8, build: { hp: 1500, life: 20 }, color: '#eab308',
+    look: { weapon: 'mallet', head: ['hardhat'], back: 'planks' } },
+  { id: 'h_inkwell', rarity: 'E', exclusive: true, name: 'Inkwell Artist', short: 'Inkwell', role: 'Summoner',
+    desc: 'Paints little stick soldiers that leap right off the canvas and into the fight.',
+    ability: 'Living Doodles: paints 2 doodle soldiers every 6s (up to 6 at once). Doodles fade after 18s.',
+    cost: 420, cd: 14, hp: 280, dmg: 0, rate: 6, range: 220, speed: 38, kb: 1,
+    attack: 'paint', anim: 'sweep', animDur: 0.6, minions: { n: 2, max: 6, life: 18 }, color: '#1d4ed8',
+    look: { weapon: 'brush', head: ['beret'], back: 'inkpot' } },
+  { id: 'h_chrono', rarity: 'E', exclusive: true, name: 'Chrono Keeper', short: 'Chrono', role: 'Controller',
+    desc: 'Keeper of the great pocket watch. Extremely strict about punctuality.',
+    ability: 'Time Stop: freezes every enemy in a 100px area for 2s (bosses 0.7s).',
+    cost: 400, cd: 13, hp: 240, dmg: 20, rate: 4.5, range: 230, speed: 36, kb: 1, aoe: 100, freeze: 2,
+    attack: 'chrono', anim: 'staff', animDur: 0.7, color: '#0ea5e9', hold: { shF: 0.4, elF: 0.9 },
+    look: { weapon: 'clockstaff', head: ['tophat'], cape: '#0c4a6e' } },
+  { id: 'h_eraser', rarity: 'L', exclusive: true, name: 'Eraser Knight', short: 'Eraser', role: 'Executioner',
+    desc: 'Wields a pencil the size of a lamppost. Mistakes get erased. So do enemies.',
+    ability: "Clean Slate: hits deal +7% of the target's max HP (4% vs bosses) and erase non-boss foes below 20% HP.",
+    cost: 750, cd: 22, hp: 1600, dmg: 90, rate: 1.3, range: 46, speed: 40, kb: 2, scale: 1.35, pctDmg: 0.07, execute: 0.2,
+    attack: 'erase', anim: 'slash', animDur: 0.55, color: '#f472b6',
+    look: { weapon: 'pencil', head: ['fullhelm'], face: 'visor', headFill: '#e5e7eb', cape: '#f9a8d4' } },
 ];
 const HERO_BY_ID = Object.fromEntries(HEROES.map(h => [h.id, h]));
+
+/* Units created by abilities (never summoned directly). */
+const SPAWNED = {
+  doodle: { id: 'doodle', name: 'Doodle', short: 'Doodle', minion: true, hp: 110, dmg: 13, rate: 0.8, range: 28, speed: 66, kb: 1,
+    attack: 'melee', anim: 'punch', animDur: 0.3, run: 'run', color: '#1d4ed8', look: { ink: '#1d4ed8', headFill: '#eff6ff' } },
+  wall: { id: 'wall', name: 'Sketch Barricade', structure: true, hp: 1500, dmg: 0, rate: 99, range: 0, speed: 0, kb: 1,
+    attack: 'none', anim: 'slash', animDur: 1, color: '#a16207', look: {} },
+};
 // Battle code expects these fields on every unit definition.
 for (const h of HEROES) { h.hero = true; h.unlock = 0; }
 
@@ -124,6 +164,10 @@ const BANNERS = [
     desc: 'Legendary Thornback Juggernaut stomps out of the woods!', colors: ['#14532d', '#22c55e'], featured: ['h_thorn', 'h_lumber'] },
   { id: 'glitch', name: 'Glitch Week', tag: 'LIMITED',
     desc: 'Pixel Phantom has escaped the arcade. Super Rare rate-up!', colors: ['#2e1065', '#c026d3'], featured: ['h_phantom', 'h_storm'] },
+  { id: 'studio', name: 'Masterwork Studio', tag: 'LIMITED',
+    desc: 'Exclusive units on rate-up: Eraser Knight, Inkwell Artist and Chrono Keeper!', colors: ['#831843', '#f472b6'], featured: ['h_eraser', 'h_inkwell', 'h_chrono'] },
+  { id: 'parade', name: 'Grand Parade', tag: 'LIMITED',
+    desc: 'The Rally Drummer and Pencil Architect lead the march. Super Rare rate-up!', colors: ['#7c2d12', '#eab308'], featured: ['h_drummer', 'h_architect'] },
   { id: 'deep', name: 'Deep Blue', tag: 'LIMITED',
     desc: 'Tidecaller rides in on the tide. Epic rate-up!', colors: ['#083344', '#06b6d4'], featured: ['h_tide', 'h_frost'] },
 ];

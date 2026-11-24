@@ -102,6 +102,11 @@ const Sound = (() => {
       notes([[196, 0.6, 0], [175, 1.2, 0.6]], { type: 'sine', vol: 0.18 });
     },
     star() { tone(1200, 0.12, { type: 'triangle', vol: 0.12, slide: 1800 }); },
+    drum() { tone(110, 0.14, { vol: 0.35, slide: 70 }); noise(0.08, { vol: 0.12, type: 'lowpass', freq: 500 }); tone(160, 0.1, { vol: 0.2, slide: 90, delay: 0.16 }); },
+    build() { [0, 0.12, 0.24].forEach(d => { tone(300, 0.06, { type: 'square', vol: 0.06, slide: 180, delay: d }); noise(0.05, { vol: 0.15, freq: 1200, delay: d }); }); },
+    paint() { noise(0.3, { vol: 0.15, freq: 900, slide: 2400, q: 1.2 }); tone(500, 0.2, { vol: 0.06, slide: 900, delay: 0.1 }); },
+    chrono() { [0, 0.1, 0.2, 0.3].forEach((d, i) => tone(i % 2 ? 1800 : 1400, 0.05, { type: 'square', vol: 0.05, delay: d })); tone(900, 0.6, { vol: 0.12, slide: 220, delay: 0.1 }); },
+    erase() { noise(0.12, { vol: 0.25, freq: 2600, slide: 900, q: 3 }); tone(700, 0.1, { type: 'triangle', vol: 0.1, slide: 1300 }); },
     gcharge() { tone(160, 1.3, { type: 'triangle', vol: 0.12, slide: 880, attack: 0.3 }); noise(1.3, { vol: 0.07, freq: 400, slide: 3200, q: 2, attack: 0.5 }); },
     ghint() { tone(700, 0.14, { type: 'square', vol: 0.06, slide: 1400 }); tone(1400, 0.2, { vol: 0.06, delay: 0.05 }); },
     greveal0() { notes([[523, 0.14, 0], [784, 0.3, 0.08]], { type: 'triangle', vol: 0.16 }); noise(0.25, { vol: 0.15, type: 'lowpass', freq: 900 }); },

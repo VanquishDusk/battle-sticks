@@ -469,7 +469,7 @@ const MetaUI = (() => {
     // name & text
     outlined(ctx, h.name, 0, H / 2 - 162, h.name.length > 16 ? 30 : 36, '#ffffff');
     ctx.font = '900 14px Nunito, sans-serif'; ctx.fillStyle = R.glow;
-    ctx.fillText(`${h.role.toUpperCase()}${h.limited ? ' · LIMITED' : ''}`, 0, H / 2 - 132);
+    ctx.fillText(`${h.role.toUpperCase()}${h.limited ? ' · LIMITED' : h.exclusive ? ' · EXCLUSIVE' : ''}`, 0, H / 2 - 132);
     ctx.font = '800 15px Nunito, sans-serif'; ctx.fillStyle = '#e9e3ff';
     wrap(ctx, h.ability, 0, H / 2 - 104, W - 70, 19, 3);
     // result badge
@@ -510,7 +510,7 @@ const MetaUI = (() => {
     for (const h of list) {
       const o = s.heroes[h.id];
       const c = U.el('button', `hcard r-${h.rarity}${o ? '' : ' unowned'}${colSel === h.id ? ' sel' : ''}`);
-      c.innerHTML = `${h.limited ? '<div class="hc-lim">LIMITED</div>' : ''}${sq.includes(h.id) ? '<div class="hc-sq">SQUAD</div>' : ''}<canvas></canvas>
+      c.innerHTML = `${h.limited ? '<div class="hc-lim">LIMITED</div>' : h.exclusive ? '<div class="hc-lim ex">EXCLUSIVE</div>' : ''}${sq.includes(h.id) ? '<div class="hc-sq">SQUAD</div>' : ''}<canvas></canvas>
         <div class="hc-name">${o ? h.short : '???'}</div><div class="hc-foot"><span class="hc-stars">${starStr(rar(h).stars)}</span>${o ? `<span class="hc-lv">Lv${o.lv}</span>` : ''}</div>`;
       Stick.renderIcon(c.querySelector('canvas'), h, 0, { w: 100, h: 74, scale: 0.92 });
       c.addEventListener('click', () => { colSel = h.id; Sound.play('click', 0); buildCollection(); });

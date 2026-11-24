@@ -62,8 +62,18 @@
         <div class="topbar-title">Barracks</div>
         <div class="topbar-right"><div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div><div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div></div>
       </div>
-      <div class="menu-sub">Spend XP to level up your stickmen. Each level adds +15% health and damage.</div>
+      <div class="bk-tabs">
+        <button class="bk-tab active" data-bk="units">Level Up</button>
+        <button class="bk-tab" data-bk="deck">Deck</button>
+      </div>
       <div id="barracks-grid"></div>
+      <div id="deck-view" class="hidden">
+        <div class="dk-head"><span>BATTLE DECK</span><small>Keys 1-0 in battle match these slots.</small><button class="btn btn-small" id="btn-dk-reset">Reset to default</button></div>
+        <div id="deck-slots"></div>
+        <div id="deck-info"></div>
+        <div class="dk-head"><span>YOUR UNITS</span><small id="dk-count"></small><button class="btn btn-small btn-summon" id="btn-dk-summon"><i class="tok"></i>Summon more</button></div>
+        <div id="deck-pool"></div>
+      </div>
     </section>
 
     <!-- ================= LAB ================= -->

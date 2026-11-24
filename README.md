@@ -48,6 +48,18 @@ Progress is saved automatically in `localStorage`.
 * Duplicates become **Stick Shards**, used to level up Stickfigures (+12% stats per level, max 10).
 * The **Collection** screen shows every Stickfigure (silhouettes until summoned) and edits your 10-slot **battle squad**, so summoned Stickfigures fight alongside your regular units.
 
+**Gacha-exclusive units** (summon only), each with its own mechanic:
+
+| Unit | Rarity | Role | Ability |
+| --- | --- | --- | --- |
+| Rally Drummer | Super Rare | Buffer | Allies within 170px deal +35% damage, attack 30% faster, march 15% faster |
+| Pencil Architect | Super Rare | Builder | Builds a barricade that blocks enemies for 20s |
+| Inkwell Artist | Epic | Summoner | Paints 2 doodle soldiers every 6s (max 6, they fade after 18s) |
+| Chrono Keeper | Epic | Controller | Freezes all enemies in a 100px area for 2s (bosses 0.7s) |
+| Eraser Knight | Legendary | Executioner | +7% max-HP damage per hit, erases non-boss foes below 20% HP |
+
+**Deck:** the Barracks has a **Deck** tab where you swap any regular unit or summoned Stickfigure into your 10 battle slots (keys 1-0).
+
 The summonable roster, banners, rates, quests and achievements live in `js/gacha-data.js`.
 
 ## Code layout

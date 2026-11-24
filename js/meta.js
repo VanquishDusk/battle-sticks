@@ -217,28 +217,39 @@ const Meta = (() => {
   }
 
   // ---------- squad ----------
+  const DECK_SIZE = 10;
+  const ownsUnit = id => !!(UNIT_BY_ID[id] || (HERO_BY_ID[id] && S().heroes[id]));
+  /** A regular unit to drop into slot i when it would otherwise be empty. */
+  function filler(deck, i) {
+    const pref = UNITS[i] && UNITS[i].id;
+    if (pref && !deck.includes(pref)) return pref;
+    return UNITS.find(u => !deck.includes(u.id)).id;
+  }
+  /** The 10-slot battle deck (regular units and owned Stickfigures, no duplicates). */
   function squad() {
     const s = S();
     const out = [];
-    for (let i = 0; i < UNITS.length; i++) {
+    for (let i = 0; i < DECK_SIZE; i++) {
       const id = s.squad[i];
-      const ok = id && (UNIT_BY_ID[id] || (HERO_BY_ID[id] && s.heroes[id])) && out.indexOf(id) < 0;
-      out.push(ok ? id : UNITS[i].id);
+      out.push(id && ownsUnit(id) && !out.includes(id) ? id : null);
     }
+    for (let i = 0; i < DECK_SIZE; i++) if (!out[i]) out[i] = filler(out, i);
     s.squad = out;
     return out;
   }
-  function equip(heroId, slot) {
+  /** Put a unit in a slot. If it is already in the deck the two slots swap. */
+  function equip(id, slot) {
     const sq = squad();
-    if (!S().heroes[heroId] || slot < 0 || slot >= sq.length) return false;
-    const j = sq.indexOf(heroId);
-    if (j >= 0) sq[j] = UNITS[j].id;
-    sq[slot] = heroId;
+    if (!ownsUnit(id) || slot < 0 || slot >= DECK_SIZE) return false;
+    const j = sq.indexOf(id);
+    if (j >= 0) sq[j] = sq[slot];
+    sq[slot] = id;
     S().squad = sq;
     changed();
     return true;
   }
-  function unequip(slot) { const sq = squad(); sq[slot] = UNITS[slot].id; S().squad = sq; changed(); }
+  function unequip(slot) { const sq = squad(); sq[slot] = null; sq[slot] = filler(sq, slot); S().squad = sq; changed(); }
+  function resetSquad() { S().squad = UNITS.map(u => u.id); changed(); }
   const slotOf = heroId => squad().indexOf(heroId);
 
   // ---------- battle hooks ----------
@@ -280,7 +291,7 @@ const Meta = (() => {
     achList, claimAch, newAchievements, claimableCount,
     activeBanners, isActive, poolFor, bannerPool, pull, pityLeft,
     heroMult, heroUpCost, upgradeHero,
-    squad, equip, unequip, slotOf,
+    squad, equip, unequip, resetSquad, slotOf,
     creditBattle, battleTokens,
     setTimeOffset: ms => { timeOffset = ms; },
   };

@@ -42,6 +42,9 @@ const Stick = (() => {
     sweep: { hit: 0.55, k: [[0, STANCE], [0.4, S({ shF: -0.7, elF: 0.4, shB: -0.4, lean: -0.15, bx: -3 })], [0.58, S({ shF: 2.3, elF: 0.1, shB: 1.6, elB: 0.3, lean: 0.4, bx: 6 })], [1, STANCE]] },
     ninja: { hit: 0.5, k: [[0, STANCE], [0.25, S({ shF: 2.7, elF: 0.3, lean: 0 })], [0.5, S({ shF: 0.2, elF: 0.05, lean: 0.5, bx: 7, shB: -0.8 })], [0.75, S({ shF: 1.8, elF: 1.2, lean: 0.25, bx: 4 })], [1, STANCE]] },
     heal: { hit: 0.5, rest: S({ shF: 0.4, elF: 0.9 }), k: [[0, S({ shF: 0.4, elF: 0.9 })], [0.45, S({ shF: 2.85, elF: 0.1, shB: 2.2, elB: 0.4, head: -0.2, lean: -0.05 })], [0.6, S({ shF: 2.9, elF: 0.05, shB: 2.3, elB: 0.3, head: -0.22 })], [1, S({ shF: 0.4, elF: 0.9 })]] },
+    drum: { hit: 0.5, k: [[0, S({ shF: 1.25, elF: 1.7, shB: 0.6, elB: 0.9 })], [0.5, S({ shF: 0.6, elF: 0.9, shB: 1.2, elB: 1.7 })], [1, S({ shF: 1.25, elF: 1.7, shB: 0.6, elB: 0.9 })]] },
+    build: { hit: 0.68, k: [[0, STANCE], [0.5, S({ shF: 2.9, elF: 0.3, lean: 0.25, hipF: 0.9, kneeF: 1.7, hipB: -0.5, kneeB: 1.3, head: 0.2 })],
+      [0.7, S({ shF: 0.25, elF: 0.1, lean: 0.5, hipF: 0.9, kneeF: 1.7, hipB: -0.5, kneeB: 1.3, head: 0.3 })], [0.85, S({ shF: 0.4, elF: 0.2, lean: 0.45, hipF: 0.9, kneeF: 1.7, hipB: -0.5, kneeB: 1.3 })], [1, STANCE]] },
     fuse: { hit: 0.95, k: [[0, STANCE], [0.9, S({ shF: 2.6, elF: 0.5, shB: 2.4, elB: 0.5, lean: 0.3 })], [1, S({ shF: 2.6, elF: 0.5, shB: 2.4, elB: 0.5, lean: 0.3 })]] },
   };
   const KB_POSE = P({ lean: -0.42, shF: 2.3, elF: 0.5, shB: 1.9, elB: 0.6, hipF: 0.75, kneeF: 1.0, hipB: 0.35, kneeB: 0.7, head: -0.2 });
@@ -76,7 +79,14 @@ const Stick = (() => {
       out.shF = -0.55 * s + 0.12; out.elF = 0.45; out.shB = 0.55 * s + 0.12; out.elB = 0.45;
     }
     if (d.hold) Object.assign(out, d.hold);
+    if (d.loopAnim) loopArms(d, ph / Math.PI, out);
     return out;
+  }
+  const _loop = Object.assign({}, BASE);
+  /** Units like the drummer keep playing their animation with their arms. */
+  function loopArms(d, u, out) {
+    animPose(ANIMS[d.anim], ((u % 1) + 1) % 1, _loop);
+    out.shF = _loop.shF; out.elF = _loop.elF; out.shB = _loop.shB; out.elB = _loop.elB;
   }
   function idlePose(d, t, seed, out) {
     const A = ANIMS[d.anim] || ANIMS.slash;
@@ -84,6 +94,7 @@ const Stick = (() => {
     if (!A.rest && d.hold) Object.assign(out, d.hold);
     out.lean += Math.sin(t * 4 + seed) * 0.03;
     out.shF += Math.sin(t * 4 + seed) * 0.04;
+    if (d.loopAnim) loopArms(d, t * 1.8 + seed, out);
     return out;
   }
 
@@ -321,6 +332,45 @@ const Stick = (() => {
       if (releasedRecently(o)) return;
       inHand(ctx, J, 0, c => bombShape(c, 0, -4, 5.4, o));
     },
+    pencil(ctx, J, o) {
+      inHand(ctx, J, 0, c => {
+        poly(c, [-3.2, 4, 0, 14, 3.2, 4], '#f5d0a0', o.ink, 1.1);
+        poly(c, [-1.1, 10.6, 0, 14, 1.1, 10.6], '#374151', null);
+        c.fillStyle = '#facc15'; c.fillRect(-3.2, -40, 6.4, 44); c.strokeStyle = o.ink; c.lineWidth = 1.2; c.strokeRect(-3.2, -40, 6.4, 44);
+        seg(c, -1, -38, -1, 2, '#ca8a04', 1); seg(c, 1.2, -38, 1.2, 2, '#fde68a', 1);
+        c.fillStyle = '#cbd5e1'; c.fillRect(-3.6, -45, 7.2, 5.5); c.strokeRect(-3.6, -45, 7.2, 5.5);
+        U.rrect(c, -3.6, -54, 7.2, 10, 2.5); c.fillStyle = '#f472b6'; c.fill(); c.stroke();
+      });
+    },
+    drumsticks(ctx, J, o) {
+      inHand(ctx, J, 0, c => { seg(c, 0, 2, 0, -13, '#a16207', 1.8); circ(c, 0, -14, 2, '#fef3c7', o.ink, 0.9); });
+    },
+    brush(ctx, J, o) {
+      inHand(ctx, J, 0, c => {
+        seg(c, 0, 9, 0, -21, '#92400e', 2.4);
+        c.fillStyle = '#cbd5e1'; c.fillRect(-2.2, -26, 4.4, 5); c.strokeStyle = o.ink; c.lineWidth = 0.9; c.strokeRect(-2.2, -26, 4.4, 5);
+        c.beginPath(); c.moveTo(-2.4, -26); c.quadraticCurveTo(-4, -33, 0, -39); c.quadraticCurveTo(4, -33, 2.4, -26); c.closePath();
+        c.fillStyle = '#1d4ed8'; c.fill(); c.stroke();
+        circ(c, 0.6, -24 + ((o.t * 2) % 1) * 10, 1.2, '#1d4ed8');
+      });
+    },
+    clockstaff(ctx, J, o) {
+      inHand(ctx, J, 0, c => {
+        seg(c, 0, 12, 0, -26, '#3f2a1a', 2.4);
+        c.globalAlpha *= 0.3 + 0.2 * Math.sin(o.t * 5); circ(c, 0, -34, 12, '#7dd3fc'); c.globalAlpha = o.alpha;
+        circ(c, 0, -34, 7.5, '#fef9c3', '#b45309', 2);
+        for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; seg(c, Math.cos(a) * 5.6, -34 + Math.sin(a) * 5.6, Math.cos(a) * 6.6, -34 + Math.sin(a) * 6.6, '#78350f', 0.7); }
+        const a1 = -o.t * 3, a2 = -o.t * 0.4;
+        seg(c, 0, -34, Math.cos(a1) * 5.5, -34 + Math.sin(a1) * 5.5, '#111', 1);
+        seg(c, 0, -34, Math.cos(a2) * 3.8, -34 + Math.sin(a2) * 3.8, '#111', 1.4);
+      });
+    },
+    mallet(ctx, J, o) {
+      inHand(ctx, J, 0, c => {
+        seg(c, 0, 5, 0, -12, '#92400e', 2.4);
+        U.rrect(c, -7, -19, 14, 8, 2); c.fillStyle = '#d6a15c'; c.fill(); c.strokeStyle = o.ink; c.lineWidth = 1.2; c.stroke();
+      });
+    },
     rock(ctx, J, o) {
       if (releasedRecently(o)) return;
       inHand(ctx, J, 0, c => poly(c, [-3.5, -1, -2.5, -5.5, 1.5, -6.5, 4, -3, 2.5, 0.5, -1, 1], '#8d8a85', o.ink, 1.1));
@@ -366,6 +416,21 @@ const Stick = (() => {
       ctx.save(); ctx.translate(p.x - 6, p.y); ctx.rotate(J.lean);
       U.rrect(ctx, -5, -7, 9, 13, 2.5); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = o.ink; ctx.lineWidth = 1.1; ctx.stroke();
       ctx.fillStyle = '#ef4444'; ctx.fillRect(-1.6, -4.5, 2.2, 7); ctx.fillRect(-4, -2.1, 7, 2.2);
+      ctx.restore();
+    },
+    inkpot(ctx, J, o) {
+      const p = torsoPt(J, 0.55);
+      ctx.save(); ctx.translate(p.x - 7, p.y); ctx.rotate(J.lean);
+      U.rrect(ctx, -5, -6, 10, 13, 3); ctx.fillStyle = '#1e3a8a'; ctx.fill(); ctx.strokeStyle = o.ink; ctx.lineWidth = 1.1; ctx.stroke();
+      ctx.fillStyle = '#a16207'; ctx.fillRect(-2.5, -10, 5, 4);
+      ctx.fillStyle = '#93c5fd'; ctx.fillRect(-3, -2, 2, 6);
+      ctx.restore();
+    },
+    planks(ctx, J, o) {
+      const p = torsoPt(J, 0.55);
+      ctx.save(); ctx.translate(p.x - 6, p.y); ctx.rotate(J.lean - 0.35);
+      for (let i = 0; i < 3; i++) { ctx.fillStyle = i % 2 ? '#c08a4e' : '#d6a15c'; ctx.fillRect(-5 + i * 3, -14 + i, 3.2, 26); ctx.strokeStyle = o.ink; ctx.lineWidth = 0.8; ctx.strokeRect(-5 + i * 3, -14 + i, 3.2, 26); }
+      seg(ctx, -6, -2, 5, -2, '#7c2d12', 1.4);
       ctx.restore();
     },
     bigbomb(ctx, J, o) {
@@ -492,6 +557,25 @@ const Stick = (() => {
       c.globalAlpha *= 0.4 + Math.sin(o.t * 4) * 0.2; circ(c, 0, -HR - 2, 4.5, '#f0abfc'); c.globalAlpha = o.alpha;
     },
     skullmask() { /* drawn by face('skull') */ },
+    hardhat(c, o) {
+      c.beginPath(); c.arc(0, -1, HR + 1.4, Math.PI, 0); c.closePath();
+      c.fillStyle = '#facc15'; c.fill(); c.strokeStyle = o.ink; c.lineWidth = 1.5; c.stroke();
+      c.fillStyle = '#facc15'; c.fillRect(-HR - 2, -2, HR * 2 + 7, 2.6); c.strokeRect(-HR - 2, -2, HR * 2 + 7, 2.6);
+      seg(c, 0, -HR - 0.6, 0, -2, '#ca8a04', 1.6);
+    },
+    tophat(c, o) {
+      c.save(); c.rotate(-0.12);
+      c.fillStyle = '#111827'; c.fillRect(-6.5, -HR - 13, 13, 13); c.fillRect(-10, -HR + 0.5, 20, 2.6);
+      c.fillStyle = '#0ea5e9'; c.fillRect(-6.5, -HR - 3.5, 13, 2.6);
+      c.restore();
+      circ(c, 6.3, -1.4, 2.6, 'rgba(186,230,253,.5)', '#b45309', 1.1);
+      c.strokeStyle = '#b45309'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(6.3, 1.2); c.quadraticCurveTo(5, 7, 1, 8); c.stroke();
+    },
+    beret(c, o) {
+      c.beginPath(); c.ellipse(-1, -HR + 1.5, HR + 2.5, 4.2, -0.18, 0, TAU);
+      c.fillStyle = '#b91c1c'; c.fill(); c.strokeStyle = o.ink; c.lineWidth = 1.3; c.stroke();
+      seg(c, -1, -HR - 2.6, -0.5, -HR - 5, o.ink, 1.6);
+    },
     fullhelm(c, o) {
       seg(c, -1, -HR - 1, -1, -HR - 4, o.ink, 2);
       poly(c, [-3, -HR - 3, 3, -HR - 3, 0, -HR - 9], '#991b1b', o.ink, 1);
@@ -579,11 +663,21 @@ const Stick = (() => {
     if (look.back && BACK[look.back]) BACK[look.back](ctx, J, o);
 
     limb(ctx, J.s, J.eB, J.hB, o.inkBack, lw);
+    if (look.weapon === 'drumsticks') inHand(ctx, J, 1, c => { seg(c, 0, 2, 0, -13, '#854d0e', 1.8); circ(c, 0, -14, 2, '#fde68a', o.inkBack, 0.9); });
     if (look.weapon === 'gloves') { circ(ctx, J.hB.x, J.hB.y, 4.6, '#9f1239', o.inkBack, 1.4); }
     if (look.off && OFF[look.off]) OFF[look.off](ctx, J, o);
     limb(ctx, J.hip, J.kB, J.fB, o.inkBack, lw);
     seg(ctx, J.hip.x, J.hip.y, J.neck.x, J.neck.y, o.ink, lw + 0.3);
     limb(ctx, J.hip, J.kF, J.fF, o.ink, lw);
+    if (look.front === 'drum') {
+      const p = torsoPt(J, 0.22), x = p.x + 9, y = p.y;
+      seg(ctx, J.s.x, J.s.y, x - 3, y - 6, '#7f1d1d', 1.4);
+      ctx.fillStyle = '#dc2626'; ctx.fillRect(x - 8, y - 6, 16, 12); ctx.strokeStyle = o.ink; ctx.lineWidth = 1.3; ctx.strokeRect(x - 8, y - 6, 16, 12);
+      ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i <= 4; i++) ctx.lineTo(x - 8 + i * 4, i % 2 ? y + 5 : y - 5);
+      ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x, y - 6, 8, 2.6, 0, 0, TAU); ctx.fillStyle = '#fef3c7'; ctx.fill(); ctx.strokeStyle = o.ink; ctx.lineWidth = 1.2; ctx.stroke();
+    }
     drawHead(ctx, J, o);
     limb(ctx, J.s, J.eF, J.hF, o.ink, lw);
     if (look.weapon && WPN[look.weapon]) WPN[look.weapon](ctx, J, o);
