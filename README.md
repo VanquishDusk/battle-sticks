@@ -40,6 +40,16 @@ Progress is saved automatically in `localStorage`.
 
 **12 levels** across 4 regions (Meadowlands, Sunscorch Desert, Frostpeak, Ashen Wastes) with new enemies introduced as you go, plus an **Endless Arena** (unlocked after level 6) with escalating waves and a saved best score.
 
+## Stick Tokens, Summons & Collection
+
+* **Stick Tokens** are the premium currency (shown top-right on menu screens). Earn them from the 7-day **daily login** streak, **daily quests** (3 per day + a bonus for finishing all), lifetime **achievements**, and **winning levels** (first clears, boss stages, new stars, Endless waves). New players get a 500-token welcome gift.
+* **Summon** on banners: 100 tokens for one, 900 for ten (Super Rare or better guaranteed). Rarities: Common, Rare, Super Rare, Epic, Legendary, with a Legendary guaranteed every 80 summons.
+* A permanent **Standard** banner plus two **limited banners** that rotate every 2 days with live countdowns. Each limited banner has an exclusive Stickfigure (only obtainable while it's live) and rate-ups.
+* Duplicates become **Stick Shards**, used to level up Stickfigures (+12% stats per level, max 10).
+* The **Collection** screen shows every Stickfigure (silhouettes until summoned) and edits your 10-slot **battle squad**, so summoned Stickfigures fight alongside your regular units.
+
+The summonable roster, banners, rates, quests and achievements live in `js/gacha-data.js`.
+
 ## Code layout
 
 | File | Purpose |
@@ -48,7 +58,10 @@ Progress is saved automatically in `localStorage`.
 | `css/style.css` | UI styling (fixed 1280×720 stage scaled to fit) |
 | `js/util.js` | Math, seeded RNG, DOM helpers |
 | `js/data.js` | Units, enemies, levels, upgrades, wallet tables |
+| `js/gacha-data.js` | Stickfigures, rarities, banners, daily rewards, quests, achievements |
 | `js/save.js` | Save data and progression helpers |
+| `js/meta.js` | Stick Tokens, daily rewards, quests, achievements, banner rotation, summoning, shards, squad |
+| `js/gacha-ui.js` | Summon screen and reveal animation, collection and squad editor, quests and daily popups |
 | `js/audio.js` | Synthesized sound effects and music |
 | `js/stickman.js` | Stickman skeleton, poses, animations, weapons and accessories |
 | `js/scenery.js` | Themed parallax backgrounds, weather, bases, world map |

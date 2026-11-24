@@ -102,6 +102,20 @@ const Sound = (() => {
       notes([[196, 0.6, 0], [175, 1.2, 0.6]], { type: 'sine', vol: 0.18 });
     },
     star() { tone(1200, 0.12, { type: 'triangle', vol: 0.12, slide: 1800 }); },
+    gcharge() { tone(160, 1.3, { type: 'triangle', vol: 0.12, slide: 880, attack: 0.3 }); noise(1.3, { vol: 0.07, freq: 400, slide: 3200, q: 2, attack: 0.5 }); },
+    ghint() { tone(700, 0.14, { type: 'square', vol: 0.06, slide: 1400 }); tone(1400, 0.2, { vol: 0.06, delay: 0.05 }); },
+    greveal0() { notes([[523, 0.14, 0], [784, 0.3, 0.08]], { type: 'triangle', vol: 0.16 }); noise(0.25, { vol: 0.15, type: 'lowpass', freq: 900 }); },
+    greveal1() { notes([[523, 0.12, 0], [659, 0.12, 0.07], [784, 0.35, 0.14]], { type: 'triangle', vol: 0.18 }); noise(0.3, { vol: 0.2, type: 'lowpass', freq: 1200 }); },
+    greveal2() { notes([[587, 0.12, 0], [740, 0.12, 0.07], [880, 0.12, 0.14], [1175, 0.45, 0.21]], { type: 'square', vol: 0.07 }); noise(0.4, { vol: 0.3, type: 'lowpass', freq: 1500, slide: 200 }); },
+    greveal3() {
+      notes([[523, 0.1, 0], [659, 0.1, 0.06], [784, 0.1, 0.12], [1046, 0.1, 0.18], [1318, 0.6, 0.24]], { type: 'square', vol: 0.08 });
+      tone(130, 0.6, { vol: 0.4, slide: 60 }); noise(0.6, { vol: 0.35, type: 'lowpass', freq: 2000, slide: 100 });
+    },
+    greveal4() {
+      notes([[523, 0.14, 0], [659, 0.14, 0.12], [784, 0.14, 0.24], [1046, 0.3, 0.36], [784, 0.14, 0.6], [1046, 0.8, 0.72]], { type: 'square', vol: 0.09 });
+      notes([[1568, 0.5, 0.4], [2093, 0.6, 0.55], [2637, 0.8, 0.7]], { vol: 0.05 });
+      tone(65, 1.2, { vol: 0.5, slide: 40 }); noise(1, { vol: 0.4, type: 'lowpass', freq: 2500, slide: 80 });
+    },
     unlock() { notes([[659, 0.1, 0], [784, 0.1, 0.08], [988, 0.1, 0.16], [1318, 0.4, 0.24]], { type: 'square', vol: 0.07 }); },
   };
 

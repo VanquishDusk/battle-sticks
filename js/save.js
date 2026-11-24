@@ -69,7 +69,12 @@ const Progress = {
 
   /** Units the player brings into battle (unlocked ones, in slot order). */
   roster() {
-    return UNITS.map(def => ({ def, lv: Progress.unitLv(def.id), unlocked: Progress.isUnitUnlocked(def) }));
+    return Meta.squad().map(id => {
+      const h = HERO_BY_ID[id];
+      if (h) { const lv = Save.d.heroes[id].lv; return { def: h, lv, mult: Meta.heroMult(lv), unlocked: true }; }
+      const def = UNIT_BY_ID[id];
+      return { def, lv: Progress.unitLv(id), unlocked: Progress.isUnitUnlocked(def) };
+    });
   },
 
   starsFor(baseFrac) { return baseFrac >= 0.7 ? 3 : baseFrac >= 0.35 ? 2 : 1; },

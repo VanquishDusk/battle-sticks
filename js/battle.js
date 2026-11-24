@@ -96,7 +96,7 @@ class Battle {
 
     this.state = this.demo ? 'play' : 'intro'; this.introT = 0;
     this.result = null; this.endT = 0; this.endFired = false;
-    this.stats = { summoned: 0, kills: 0, dmgDealt: 0, time: 0, spent: 0 };
+    this.stats = { summoned: 0, kills: 0, dmgDealt: 0, time: 0, spent: 0, thunders: 0, bossKills: 0 };
 
     this.camX = this.demo ? Math.max(0, (this.W - VIEW_W) / 2) : Math.max(0, this.W - VIEW_W);
     this.camV = 0; this.dragging = false; this.camTarget = null;
@@ -130,7 +130,7 @@ class Battle {
     this.gold -= r.def.cost;
     this.stats.spent += r.def.cost;
     this.cd[id] = r.def.cd * this.mods.cdMult;
-    const u = this.spawnUnit(r.def, 0, Progress.unitMult(r.lv));
+    const u = this.spawnUnit(r.def, 0, r.mult || Progress.unitMult(r.lv));
     this.stats.summoned++;
     this.puff(u.x, u.y - 20, '#ffffff', 10);
     this.ring(u.x, u.y - 20, r.def.color, 30);
@@ -151,7 +151,7 @@ class Battle {
   }
   fireThunder() {
     if (this.state !== 'play' || this.thunder < 1) return false;
-    this.thunder = 0; this.thunderNotified = false;
+    this.thunder = 0; this.thunderNotified = false; this.stats.thunders++;
     const reach = this.pBase.x + THUNDER_REACH;
     const targets = this.team[1].filter(u => u.x <= reach);
     const dmg = this.mods.thunderDmg;
@@ -637,6 +637,7 @@ class Battle {
       this.sfx('edeath', 0.06);
       for (let i = 0; i < 6; i++) this.part({ type: 'smoke', x: u.x + U.rand(-10, 10), y: u.y - U.rand(10, 40) * u.s, vx: U.rand(-30, 30), vy: U.rand(-40, -10), life: 0.8, size: U.rand(5, 9) * u.s, color: '#3a3340' });
       if (u.def.boss) {
+        if (!noReward) this.stats.bossKills++;
         this.emit('banner', { text: 'BOSS DEFEATED!', cls: 'gold' });
         this.explosion(u.x, u.y - 40 * u.s, 90, false);
         this.addShake(16);

@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/gacha.css">
 </head>
 <body>
 <div id="game">
@@ -36,12 +37,19 @@
       <div class="topbar">
         <button class="btn btn-small" data-go="title">&#9664; Title</button>
         <div class="topbar-title">World Map</div>
-        <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+        <div class="topbar-right">
+          <button class="btn btn-small btn-top" id="btn-daily">Daily<span class="badge hidden" id="badge-daily">!</span></button>
+          <button class="btn btn-small btn-top" id="btn-quests">Quests<span class="badge hidden" id="badge-quests">0</span></button>
+          <div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div>
+          <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+        </div>
       </div>
       <div id="map-nodes"></div>
       <div class="bottombar">
         <button class="btn btn-mid btn-blue" id="btn-barracks">Barracks</button>
         <button class="btn btn-mid btn-green" id="btn-lab">Upgrades</button>
+        <button class="btn btn-mid btn-summon" id="btn-summon"><i class="tok"></i>Summon</button>
+        <button class="btn btn-mid btn-teal" id="btn-collection">Collection</button>
         <button class="btn btn-mid btn-purple" id="btn-endless">Endless Arena</button>
         <button class="btn btn-mid" id="btn-settings-map">Settings</button>
       </div>
@@ -52,7 +60,7 @@
       <div class="topbar">
         <button class="btn btn-small" data-go="map">&#9664; Map</button>
         <div class="topbar-title">Barracks</div>
-        <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+        <div class="topbar-right"><div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div><div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div></div>
       </div>
       <div class="menu-sub">Spend XP to level up your stickmen. Each level adds +15% health and damage.</div>
       <div id="barracks-grid"></div>
@@ -63,12 +71,56 @@
       <div class="topbar">
         <button class="btn btn-small" data-go="map">&#9664; Map</button>
         <div class="topbar-title">Upgrades</div>
-        <div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div>
+        <div class="topbar-right"><div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div><div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div></div>
       </div>
       <div class="menu-sub">Permanent upgrades that apply to every battle.</div>
       <div id="lab-list"></div>
     </section>
 
+
+    <!-- ================= SUMMON (banners) ================= -->
+    <section id="scr-summon" class="screen menu-screen">
+      <div class="topbar">
+        <button class="btn btn-small" data-go="map">&#9664; Map</button>
+        <div class="topbar-title">Summon</div>
+        <div class="topbar-right"><div class="shard-pill" title="Stick Shards"><i class="shard"></i><span class="shard-n">0</span></div><div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div></div>
+      </div>
+      <div id="banner-tabs"></div>
+      <div id="banner-main">
+        <canvas id="banner-cv"></canvas>
+        <div class="bn-text">
+          <div class="bn-tag" id="bn-tag">LIMITED</div>
+          <div class="bn-name" id="bn-name">Banner</div>
+          <div class="bn-desc" id="bn-desc"></div>
+          <div class="bn-featured" id="bn-featured"></div>
+        </div>
+        <div class="bn-timer" id="bn-timer"></div>
+      </div>
+      <div id="summon-bar">
+        <div class="sb-info">
+          <button class="btn btn-small" id="btn-rates">Rates &amp; Pool</button>
+          <div class="sb-pity" id="sb-pity"></div>
+        </div>
+        <button class="btn btn-pull" id="btn-pull1"><span class="pl">SUMMON x1</span><span class="pc"><i class="tok"></i><b>100</b></span></button>
+        <button class="btn btn-pull btn-pull10" id="btn-pull10"><span class="pl">SUMMON x10</span><span class="pc"><i class="tok"></i><b>900</b></span><span class="pg">Super Rare+ guaranteed</span></button>
+      </div>
+    </section>
+
+    <!-- ================= COLLECTION ================= -->
+    <section id="scr-collection" class="screen menu-screen">
+      <div class="topbar">
+        <button class="btn btn-small" data-go="map">&#9664; Map</button>
+        <div class="topbar-title">Collection</div>
+        <div class="topbar-right"><div class="shard-pill" title="Stick Shards"><i class="shard"></i><span class="shard-n">0</span></div><div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div></div>
+      </div>
+      <div id="col-filters"></div>
+      <div id="col-grid"></div>
+      <div id="col-detail"></div>
+      <div id="squad-bar">
+        <div class="sq-head"><span>BATTLE SQUAD</span><small id="sq-hint">Tap a Stickfigure, then "Add to Squad" to bring it into battle.</small></div>
+        <div id="squad-slots"></div>
+      </div>
+    </section>
     <!-- ================= BATTLE ================= -->
     <section id="scr-battle" class="screen">
       <div id="hud">
@@ -216,6 +268,50 @@
       </div>
     </div>
 
+
+    <div id="ov-daily" class="overlay">
+      <div class="card daily-card">
+        <button class="close-x" data-close>&times;</button>
+        <div class="welcome hidden" id="daily-welcome"><i class="tok big"></i> Welcome gift: <b>+500 Stick Tokens</b>!</div>
+        <h2>Daily Rewards</h2>
+        <div class="daily-sub" id="daily-sub">Log in every day to keep your streak going.</div>
+        <div class="daily-row" id="daily-row"></div>
+        <button class="btn btn-big btn-yellow" id="btn-claim-daily">CLAIM</button>
+      </div>
+    </div>
+
+    <div id="ov-quests" class="overlay">
+      <div class="card quests-card">
+        <button class="close-x" data-close>&times;</button>
+        <div class="tabs"><button class="tab active" data-tab="daily">Daily Quests<span class="badge hidden" id="badge-tab-q">0</span></button><button class="tab" data-tab="ach">Achievements<span class="badge hidden" id="badge-tab-a">0</span></button></div>
+        <div class="q-reset" id="q-reset"></div>
+        <div class="q-list" id="q-list"></div>
+      </div>
+    </div>
+
+    <div id="ov-rates" class="overlay">
+      <div class="card rates-card">
+        <button class="close-x" data-close>&times;</button>
+        <h2 id="rates-title">Rates</h2>
+        <div id="rates-body"></div>
+      </div>
+    </div>
+
+    <div id="ov-pull" class="overlay">
+      <canvas id="pull-cv"></canvas>
+      <button class="btn btn-small pull-skip" id="btn-pull-skip">Skip &#9654;&#9654;</button>
+      <div class="pull-hint" id="pull-hint">Tap to continue</div>
+      <div class="pull-summary hidden" id="pull-summary">
+        <div class="ps-title">SUMMON RESULTS</div>
+        <div class="ps-grid" id="ps-grid"></div>
+        <div class="ps-btns">
+          <button class="btn btn-mid" id="btn-ps-done">Done</button>
+          <button class="btn btn-mid btn-teal" id="btn-ps-col">View Collection</button>
+          <button class="btn btn-mid btn-summon" id="btn-ps-again">Summon Again</button>
+        </div>
+      </div>
+    </div>
+    <div id="ach-stack"></div>
     <div id="toast"></div>
   </div>
 </div>
@@ -230,12 +326,15 @@
 
 <script src="js/util.js"></script>
 <script src="js/data.js"></script>
+<script src="js/gacha-data.js"></script>
 <script src="js/save.js"></script>
+<script src="js/meta.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/stickman.js"></script>
 <script src="js/scenery.js"></script>
 <script src="js/battle.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/gacha-ui.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

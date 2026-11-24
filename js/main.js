@@ -62,9 +62,11 @@ const Game = {
   }
 
   Save.load();
+  Meta.ensure();
   resize();
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', () => setTimeout(resize, 200));
   UI.init();
+  MetaUI.init();
   requestAnimationFrame(t => { last = t; frame(t); });
 })();

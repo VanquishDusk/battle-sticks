@@ -13,6 +13,12 @@ const Stick = (() => {
   const TH = 12, SH = 12, TO = 21, UA = 10.5, FA = 10.5, HR = 8.5, NK = 2.2;
   const INK = '#161616', INK_BACK = '#4d4d4d', FLASH = '#ff3030', FLASH_BACK = '#ff8a8a';
   const KB_DUR = 0.55;
+  /** Blend two #rrggbb colours. */
+  function mixHex(a, b, t) {
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const A = p(a), B = p(b);
+    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+  }
 
   const BASE = { bx: 0, lean: 0.05, hipF: 0.1, kneeF: 0.06, hipB: -0.1, kneeB: 0.06, shF: 0.2, elF: 0.3, shB: -0.16, elB: 0.3, head: 0, rot: 0, hop: 0 };
   const KEYS = Object.keys(BASE);
@@ -393,17 +399,17 @@ const Stick = (() => {
     },
     headband(c, o) {
       c.save(); c.beginPath(); c.arc(0, 0, HR, 0, TAU); c.clip();
-      c.fillStyle = '#e11d48'; c.fillRect(-HR - 1, -5.2, HR * 2 + 2, 3.6); c.restore();
+      c.fillStyle = o.look.band || '#e11d48'; c.fillRect(-HR - 1, -5.2, HR * 2 + 2, 3.6); c.restore();
       const w = Math.sin(o.t * 12) * 2;
-      c.strokeStyle = '#e11d48'; c.lineWidth = 2.2;
+      c.strokeStyle = o.look.band || '#e11d48'; c.lineWidth = 2.2;
       c.beginPath(); c.moveTo(-HR + 1, -3.5); c.quadraticCurveTo(-HR - 5, -4 + w, -HR - 10, -1 - w); c.stroke();
       c.beginPath(); c.moveTo(-HR + 1, -3.5); c.quadraticCurveTo(-HR - 4, 0 - w, -HR - 8, 3 + w); c.stroke();
     },
     ninjaband(c, o) {
       c.save(); c.beginPath(); c.arc(0, 0, HR, 0, TAU); c.clip();
-      c.fillStyle = '#b91c1c'; c.fillRect(-HR - 1, -6.6, HR * 2 + 2, 2.6); c.restore();
+      c.fillStyle = o.look.band || '#b91c1c'; c.fillRect(-HR - 1, -6.6, HR * 2 + 2, 2.6); c.restore();
       const w = Math.sin(o.t * 14) * 2.5;
-      c.strokeStyle = '#b91c1c'; c.lineWidth = 2;
+      c.strokeStyle = o.look.band || '#b91c1c'; c.lineWidth = 2;
       c.beginPath(); c.moveTo(-HR + 1, -5.3); c.quadraticCurveTo(-HR - 7, -6 + w, -HR - 15, -3 - w); c.stroke();
       c.beginPath(); c.moveTo(-HR + 1, -5.3); c.quadraticCurveTo(-HR - 6, -2 - w, -HR - 12, 2 + w); c.stroke();
     },
@@ -557,14 +563,15 @@ const Stick = (() => {
     if (p.hop) ctx.translate(0, -p.hop);
     ctx.globalAlpha = o.alpha;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    o.ink = o.flash ? FLASH : INK;
-    o.inkBack = o.flash ? FLASH_BACK : INK_BACK;
+    o.ink = o.flash ? FLASH : look.ink || INK;
+    o.inkBack = o.flash ? FLASH_BACK : look.ink ? mixHex(look.ink, '#ffffff', 0.3) : INK_BACK;
     const lw = 3.3;
 
     if (look.aura) {
       ctx.globalAlpha = o.alpha * (0.22 + Math.sin(o.t * 3) * 0.08);
       const g = ctx.createRadialGradient(0, -30, 4, 0, -30, 42);
-      g.addColorStop(0, '#c084fc'); g.addColorStop(1, 'rgba(88,28,135,0)');
+      const ac = typeof look.aura === 'string' ? look.aura : '#c084fc';
+      g.addColorStop(0, ac); g.addColorStop(1, ac + '00');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -30, 42, 0, TAU); ctx.fill();
       ctx.globalAlpha = o.alpha;
     }
@@ -609,7 +616,7 @@ const Stick = (() => {
   }
 
   /** Draw a unit definition standing (for cards / icons). `anim` loops its attack. */
-  function drawPreview(ctx, def, team, x, y, s, t, mode) {
+  function drawPreview(ctx, def, team, x, y, s, t, mode, dirOverride) {
     const pose = Object.assign({}, BASE);
     const fake = { def, state: 'idle', seed: 1, stunT: 0 };
     if (mode === 'anim') {
@@ -624,7 +631,7 @@ const Stick = (() => {
       idlePose(def, 0, 0, pose);
     }
     draw(ctx, {
-      x, y, s, dir: team === 0 ? 1 : -1, pose, look: def.look, def, team, t, alpha: 1, flash: false,
+      x, y, s, dir: dirOverride || (team === 0 ? 1 : -1), pose, look: def.look, def, team, t, alpha: 1, flash: false,
       state: fake.state, atkU: fake.state === 'attack' ? fake.atkT / fake.animDur : -1, dead: false, color: def.color, seed: 1,
     });
   }

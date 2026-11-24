@@ -34,6 +34,7 @@ const UI = (() => {
     if (name === 'lab') buildLab();
     refreshXP();
     Sound.startMusic(name === 'battle' ? 'battle' : 'menu');
+    if (typeof MetaUI !== 'undefined') MetaUI.onShow(name);
   }
   function overlay(id, on) { $('#' + id).classList.toggle('show', !!on); }
   function anyOverlay() { return $$('.overlay.show').length > 0; }
@@ -165,7 +166,7 @@ const UI = (() => {
         btn.disabled = lv >= UNIT_MAX_LV || Save.d.xp < cost;
         btn.addEventListener('click', () => {
           if (Save.d.xp < cost || lv >= UNIT_MAX_LV) return;
-          Save.d.xp -= cost; Save.d.unitLv[def.id] = lv + 1; Save.save();
+          Save.d.xp -= cost; Save.d.unitLv[def.id] = lv + 1; Meta.track('upgrades'); Save.save();
           Sound.play('upgrade'); buildBarracks(); refreshXP();
         });
         card.appendChild(btn);
@@ -226,9 +227,10 @@ const UI = (() => {
     const wrap = $('#slots');
     wrap.innerHTML = '';
     slots = [];
-    UNITS.forEach((def, i) => {
+    Progress.roster().forEach((entry, i) => {
+      const def = entry.def;
       const r = b.rosterById[def.id];
-      const el = U.el('button', 'slot' + (r ? '' : ' locked'));
+      const el = U.el('button', 'slot' + (r ? '' : ' locked') + (def.hero ? ` hero r-${def.rarity}` : ''));
       el.style.setProperty('--c', def.color);
       el.innerHTML = `<div class="band"></div><span class="key">${(i + 1) % 10}</span><canvas width="76" height="66"></canvas>
         <span class="nm">${r ? def.short : '???'}</span><span class="cost">${r ? `<i class="coin"></i>${def.cost}` : '&nbsp;'}</span>
@@ -402,6 +404,7 @@ const UI = (() => {
   function onBattleEnd(b) {
     const L = b.L, S = Save.d;
     const card = $('.result-card');
+    b._prevStars = S.stars[L.n] || 0; b._first = !L.endless && !S.cleared[L.n];
     let xp = 0, stars = 0, unlock = null, note = '';
     const win = b.result === 'win';
     if (L.n === 1) S.tutorial = true;
@@ -439,12 +442,15 @@ const UI = (() => {
     }
     S.xp += xp;
     Save.save();
+    const tokens = Meta.battleTokens(b, { win, first: b._first, stars, newStars: Math.max(0, stars - b._prevStars), survived: b.endless ? Math.max(0, b.waveIdx - 1) : 0 });
 
     const mins = Math.floor(b.stats.time / 60), secs = Math.floor(b.stats.time % 60);
     $('#res-stats').innerHTML = [
       ['Time', `${mins}:${String(secs).padStart(2, '0')}`], ['Summoned', b.stats.summoned], ['Defeated', b.stats.kills], ['Damage', U.fmt(b.stats.dmgDealt)],
     ].map(([k, v]) => `<div class="res-stat">${k}<b>${v}</b></div>`).join('');
-    $('#res-reward').innerHTML = `+${U.fmt(xp)} XP${note ? `<small>${note}</small>` : ''}`;
+    $('#res-reward').innerHTML = `+${U.fmt(xp)} XP${tokens ? ` <span class="res-tok"><i class="tok big"></i>+${U.fmt(tokens)}</span>` : ''}${note ? `<small>${note}</small>` : ''}`;
+    MetaUI.refresh();
+    setTimeout(() => MetaUI.achPopups(), 1200);
     const ru = $('#res-unlock');
     ru.classList.toggle('hidden', !unlock);
     if (unlock) {
@@ -461,6 +467,7 @@ const UI = (() => {
   }
 
   function endBattle() {
+    if (Game.battle) Meta.creditBattle(Game.battle);
     Game.battle = null;
     overlay('ov-result', false); overlay('ov-pause', false);
     $('#tip').classList.add('hidden'); tip = null;
@@ -612,7 +619,7 @@ const UI = (() => {
     $('#set-autocam').addEventListener('change', e => { Save.d.settings.autocam = e.target.checked; Save.save(); syncSettings(); });
     $('#btn-reset').addEventListener('click', () => {
       confirmBox('Reset progress?', 'All XP, unlocked units, upgrades and stars will be lost forever.', () => {
-        Save.reset(); syncSettings(); overlay('ov-settings', false);
+        Save.reset(); Meta.ensure(); syncSettings(); overlay('ov-settings', false);
         endBattle(); show('title'); toast('Progress reset');
       });
     });
@@ -631,6 +638,7 @@ const UI = (() => {
   function tick(dt, t) {
     if (Game.screen === 'battle' && Game.battle) updateHud(Game.battle, dt);
     else if (Game.screen === 'barracks') animateBarracks(t);
+    MetaUI.tick(dt, t);
   }
 
   return { init, tick, show, toast, startBattle, overlay, togglePause };
