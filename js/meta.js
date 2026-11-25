@@ -140,6 +140,7 @@ const Meta = (() => {
     return {
       list: [
         { banner: BANNER_BY_ID.standard, ends: null },
+        { banner: BANNER_BY_ID.zodiac, ends: null, season: zodiacSeason(now()) },
         { banner: LIMITED_BANNERS[mod(k)], ends: endOf(k) },
         { banner: LIMITED_BANNERS[mod(k + 1)], ends: endOf(k + 1) },
       ],
@@ -150,20 +151,24 @@ const Meta = (() => {
   function isActive(bannerId) { return activeBanners().list.some(x => x.banner.id === bannerId); }
   /** Heroes obtainable from a banner, per rarity. */
   function poolFor(banner, rarity) {
-    const base = HEROES.filter(h => h.rarity === rarity && (!h.limited || h.limited === banner.id));
-    const featured = banner.permanent ? [] : banner.featured.map(id => HERO_BY_ID[id]).filter(h => h && h.rarity === rarity);
+    const base = banner.exclusiveRarity === rarity
+      ? HEROES.filter(h => h.rarity === rarity && h.limited === banner.id)
+      : HEROES.filter(h => h.rarity === rarity && (!h.limited || h.limited === banner.id));
+    const featured = banner.permanent && !banner.zodiac ? [] : banner.featured.map(id => HERO_BY_ID[id]).filter(h => h && h.rarity === rarity);
     return { base, featured };
   }
   function bannerPool(banner) { return HEROES.filter(h => !h.limited || h.limited === banner.id); }
 
-  function rollRarity(rng, minIdx) {
-    const entries = RARITIES.map((r, i) => [i, i >= minIdx ? r.rate : 0]);
+  const ratesOf = banner => banner.rates || RARITIES.map(r => r.rate);
+  function rollRarity(rng, minIdx, rates) {
+    const entries = RARITIES.map((r, i) => [i, i >= minIdx ? (rates ? rates[i] : r.rate) : 0]);
     return U.weighted(entries, rng());
   }
   function pickHero(banner, rIdx, rng) {
     for (let i = rIdx; i >= 0; i--) {
       const { base, featured } = poolFor(banner, RARITIES[i].id);
-      if (featured.length && rng() < GACHA.featuredChance) return featured[(rng() * featured.length) | 0];
+      const fc = banner.featuredChance != null ? banner.featuredChance : GACHA.featuredChance;
+      if (featured.length && rng() < fc) return featured[(rng() * featured.length) | 0];
       if (base.length) return base[(rng() * base.length) | 0];
     }
     return HEROES[0];
@@ -180,27 +185,30 @@ const Meta = (() => {
     const s = S();
     if (s.tokens < cost) return { ok: false, reason: 'tokens', cost };
     s.tokens -= cost;
-    const results = [];
+    const results = [], rates = ratesOf(banner);
     for (let i = 0; i < count; i++) {
-      s.pity++;
+      s.pity++; s.ppity = (s.ppity || 0) + 1;
       let rIdx;
-      if (s.pity >= GACHA.pity) rIdx = 4;
-      else if (count === 10 && i === 9 && !results.some(r => r.rIdx >= 2)) rIdx = rollRarity(rng, 2);
-      else rIdx = rollRarity(rng, 0);
+      if (s.ppity >= GACHA.purityPity) rIdx = 4;
+      else if (s.pity >= GACHA.pity) rIdx = rollRarity(rng, 3, rates);
+      else if (count === 10 && i === 9 && !results.some(r => r.rIdx >= 2)) rIdx = rollRarity(rng, 2, rates);
+      else rIdx = rollRarity(rng, 0, rates);
       const hero = pickHero(banner, rIdx, rng);
       rIdx = RARITY[hero.rarity].idx;
-      if (rIdx === 4) s.pity = 0;
+      if (rIdx >= 3) s.pity = 0;
+      if (rIdx === 4) s.ppity = 0;
       const owned = s.heroes[hero.id];
       let shards = 0, isNew = false;
       if (owned) { shards = RARITY[hero.rarity].shards; owned.copies = (owned.copies || 1) + 1; s.shards += shards; }
       else { s.heroes[hero.id] = { lv: 1, copies: 1, got: now() }; isNew = true; }
-      results.push({ hero, rIdx, isNew, shards });
+      results.push({ hero, rIdx, isNew, shards, banner: banner.id });
     }
     track('pulls', count);
     changed();
     return { ok: true, results };
   }
   const pityLeft = () => Math.max(1, GACHA.pity - S().pity);
+  const purityNear = () => (S().ppity || 0) >= GACHA.purityPity - 50;
 
   // ---------- Stickfigure levels ----------
   const heroMult = lv => 1 + 0.12 * (lv - 1);
@@ -289,7 +297,7 @@ const Meta = (() => {
     dailyState, claimDaily,
     questList, claimQuest, bonusState, claimBonus, msToNextDay, track,
     achList, claimAch, newAchievements, claimableCount,
-    activeBanners, isActive, poolFor, bannerPool, pull, pityLeft,
+    activeBanners, isActive, poolFor, bannerPool, pull, pityLeft, purityNear, ratesOf,
     heroMult, heroUpCost, upgradeHero,
     squad, equip, unequip, resetSquad, slotOf,
     creditBattle, battleTokens,

@@ -2,9 +2,9 @@
    Stick Tokens, banners/summon, collection, quests, daily.
    ========================================================= */
 :root {
-  --rC: #9aa3af; --rR: #22c55e; --rSR: #3b82f6; --rE: #a855f7; --rL: #f5b301;
+  --rC: #9aa3af; --rR: #22c55e; --rMR: #3b82f6; --rUR: #f5b301; --rP: #e879f9;
 }
-.r-C { --rc: var(--rC); } .r-R { --rc: var(--rR); } .r-SR { --rc: var(--rSR); } .r-E { --rc: var(--rE); } .r-L { --rc: var(--rL); }
+.r-C { --rc: var(--rC); } .r-R { --rc: var(--rR); } .r-MR { --rc: var(--rMR); } .r-UR { --rc: var(--rUR); } .r-P { --rc: var(--rP); }
 
 /* ---------- currency icons & pills ---------- */
 .tok { display: inline-block; width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 4px; position: relative; flex: none;
@@ -147,7 +147,9 @@
 .ps-grid.single { grid-template-columns: 190px; }
 .ps-card { position: relative; height: 200px; border-radius: 16px; border: 4px solid var(--rc); background: linear-gradient(#2a1f4a, #120c22); box-shadow: 0 0 0 3px var(--ink), 0 0 22px 2px var(--rc);
   display: flex; flex-direction: column; align-items: center; padding: 6px; color: #fff; animation: cardIn .45s cubic-bezier(.2,1.6,.4,1) both; }
-.ps-card.r-L { animation: cardIn .45s cubic-bezier(.2,1.6,.4,1) both, legGlow 1.2s ease-in-out infinite; }
+.ps-card.r-UR { animation: cardIn .45s cubic-bezier(.2,1.6,.4,1) both, legGlow 1.2s ease-in-out infinite; }
+.ps-card.r-P { animation: cardIn .45s cubic-bezier(.2,1.6,.4,1) both, pureGlow 2s linear infinite; background: linear-gradient(#1a0b2e, #05030c); }
+@keyframes pureGlow { 0% { box-shadow: 0 0 0 3px var(--ink), 0 0 34px 8px #f0abfc; } 33% { box-shadow: 0 0 0 3px var(--ink), 0 0 34px 8px #67e8f9; } 66% { box-shadow: 0 0 0 3px var(--ink), 0 0 34px 8px #fde047; } 100% { box-shadow: 0 0 0 3px var(--ink), 0 0 34px 8px #f0abfc; } }
 @keyframes cardIn { from { transform: scale(.3) rotateY(90deg); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes legGlow { 50% { box-shadow: 0 0 0 3px var(--ink), 0 0 40px 10px #fde047; } }
 .ps-card canvas { width: 110px; height: 92px; background: radial-gradient(ellipse at 50% 80%, color-mix(in srgb, var(--rc) 60%, transparent), transparent 70%); border-radius: 10px; }
@@ -180,7 +182,7 @@
 .hc-lim, .hc-sq { position: absolute; top: 4px; font-weight: 900; font-size: 9px; letter-spacing: .5px; border-radius: 6px; padding: 1px 5px; z-index: 1; }
 .hc-lim { left: 4px; background: #ef4444; }
 .hc-sq { right: 4px; background: #22c55e; color: var(--ink); }
-.hcard.r-L:not(.unowned)::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%); background-size: 250% 100%; animation: shimmer 2.4s linear infinite; pointer-events: none; }
+.hcard.r-UR:not(.unowned)::after, .hcard.r-P:not(.unowned)::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%); background-size: 250% 100%; animation: shimmer 2.4s linear infinite; pointer-events: none; }
 
 #col-detail { position: absolute; left: 794px; top: 86px; width: 470px; height: 482px; background: var(--cream); border: 4px solid var(--ink); border-radius: 20px; box-shadow: 0 5px 0 var(--ink), inset 0 0 0 4px var(--rc); padding: 12px 16px; display: flex; flex-direction: column; overflow: hidden; }
 .cd-art { position: relative; height: 200px; margin: -4px -8px 6px; border-radius: 14px; background: linear-gradient(#2a1f4a, #120c22); overflow: hidden; border: 3px solid var(--ink); flex: none; }
@@ -223,7 +225,7 @@
 /* ---------- battle slots for Stickfigures ---------- */
 .slot.hero { box-shadow: 0 4px 0 var(--ink), inset 0 0 0 3px var(--rc); background: linear-gradient(color-mix(in srgb, var(--rc) 30%, #fffaf0), #f0dfbf); }
 .slot.hero .band { background: var(--rc); }
-.slot.hero.r-L .band { background: linear-gradient(90deg, #fde047, #f97316, #ec4899, #a855f7, #3b82f6, #fde047); background-size: 200% 100%; animation: shimmer 2s linear infinite; }
+.slot.hero.r-P .band { background: linear-gradient(90deg, #fde047, #f97316, #ec4899, #a855f7, #3b82f6, #fde047); background-size: 200% 100%; animation: shimmer 2s linear infinite; }
 
 .res-tok { color: #7c3aed; margin-left: 10px; }
 
@@ -244,7 +246,7 @@
 .dk-card:hover { transform: translateY(-3px); }
 .dk-card canvas { width: 96px; height: 70px; margin-top: 8px; }
 .dk-card.hero { background: linear-gradient(color-mix(in srgb, var(--rc) 35%, #fffaf0), #f0dfbf); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 3px var(--rc); border-top-color: var(--rc); }
-.dk-card.hero.r-L { border-top: 7px solid transparent; border-image: linear-gradient(90deg, #fde047, #f97316, #ec4899, #a855f7, #3b82f6) 1; }
+.dk-card.hero.r-P { border-top: 7px solid transparent; border-image: linear-gradient(90deg, #fde047, #f97316, #ec4899, #a855f7, #3b82f6) 1; }
 .dk-card.locked { background: linear-gradient(#6d6058, #4d433c); cursor: not-allowed; }
 .dk-card.locked canvas { filter: brightness(0) opacity(.35); }
 .dk-card.locked .dk-name, .dk-card.locked .dk-cost { color: #cbbba8; }
@@ -267,3 +269,29 @@
 .di-stats b { font-family: var(--display); font-weight: normal; }
 .di-hint { font-size: 12px; color: #7c3aed; }
 .hc-lim.ex { background: #ec4899; }
+
+/* ---------- Purities: prismatic accents ---------- */
+.hcard.r-P:not(.unowned), .dk-card.hero.r-P, .slot.hero.r-P { animation: pureHue 4s linear infinite; }
+@keyframes pureHue { 0% { --rc: #e879f9; } 33% { --rc: #22d3ee; } 66% { --rc: #fde047; } 100% { --rc: #e879f9; } }
+@property --rc { syntax: '<color>'; inherits: true; initial-value: #e879f9; }
+.rt-list .pure { background: linear-gradient(90deg, #1a0b2e, #3b0764); color: #f5d0fe; letter-spacing: 1px; }
+.rt-row.r-P .rt-r { background: linear-gradient(90deg, #f0abfc, #67e8f9, #fde047) !important; color: #2b2118; -webkit-text-stroke: 0; }
+.sb-pure { color: #f0abfc; font-size: 14px; animation: badgeBob 1.6s ease-in-out infinite; text-shadow: 0 0 10px #e879f9; }
+
+/* ---------- Zodiac ---------- */
+.zglyph { vertical-align: -3px; display: inline-block; }
+.bn-tab.zodiac { opacity: .9; background: linear-gradient(120deg, #0b1033, #312e81 60%, #6d28d9); border-color: #fbbf24; }
+.bn-tab.zodiac .bt-tag { color: #fde68a; }
+.bn-tab.zodiac canvas { background: radial-gradient(circle, rgba(253,230,138,.35), rgba(0,0,0,.35)); }
+.bn-tag.zodiac { background: linear-gradient(90deg, #fde68a, #f59e0b); color: #1e1b4b; }
+.bf-chip em.z { background: linear-gradient(90deg, #f59e0b, #a855f7); }
+.bf-chip .zglyph { margin-right: -2px; }
+.ps-z { position: absolute; top: -12px; left: -10px; width: 34px; height: 34px; border-radius: 50%; background: #0b1033; border: 3px solid #fbbf24; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.hc-z { position: absolute; bottom: 30px; right: 6px; z-index: 1; }
+.cf-btn { font-size: 13px; padding: 5px 6px 2px; }
+.cf-btn.zf { background: linear-gradient(#e0e7ff, #c7d2fe); }
+.cf-btn.zf.active { background: linear-gradient(#6366f1, #312e81); }
+#banner-tabs { gap: 8px; }
+.bn-tab canvas { width: 64px; height: 64px; }
+.hc-lim.zd, .cd-lim.zd { background: linear-gradient(90deg, #312e81, #6d28d9); color: #fde68a; }
+.cd-title { font-size: 15px; color: #b45309; }

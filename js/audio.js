@@ -107,6 +107,18 @@ const Sound = (() => {
     paint() { noise(0.3, { vol: 0.15, freq: 900, slide: 2400, q: 1.2 }); tone(500, 0.2, { vol: 0.06, slide: 900, delay: 0.1 }); },
     chrono() { [0, 0.1, 0.2, 0.3].forEach((d, i) => tone(i % 2 ? 1800 : 1400, 0.05, { type: 'square', vol: 0.05, delay: d })); tone(900, 0.6, { vol: 0.12, slide: 220, delay: 0.1 }); },
     erase() { noise(0.12, { vol: 0.25, freq: 2600, slide: 900, q: 3 }); tone(700, 0.1, { type: 'triangle', vol: 0.1, slide: 1300 }); },
+    shield() { tone(520, 0.3, { type: 'triangle', vol: 0.12, slide: 1040 }); tone(780, 0.35, { vol: 0.08, delay: 0.08, slide: 1560 }); },
+    moon() { notes([[880, 0.3, 0], [1175, 0.3, 0.1], [1568, 0.5, 0.2]], { vol: 0.07 }); noise(0.4, { vol: 0.08, freq: 3000, slide: 1200, q: 4 }); },
+    roar() { tone(150, 0.5, { type: 'sawtooth', vol: 0.18, slide: 70, attack: 0.03 }); noise(0.45, { vol: 0.25, type: 'lowpass', freq: 700, slide: 150 }); },
+    tide() { noise(0.9, { vol: 0.3, type: 'lowpass', freq: 500, slide: 2400, attack: 0.15 }); noise(0.6, { vol: 0.12, freq: 3500, q: 1, delay: 0.25 }); },
+    dream() { notes([[1046, 0.25, 0], [1318, 0.25, 0.08], [1568, 0.25, 0.16], [2093, 0.4, 0.24]], { type: 'sine', vol: 0.06 }); },
+    zwheel() { tone(1900, 0.03, { type: 'square', vol: 0.035 }); },
+    zstar() { tone(1568 + Math.random() * 600, 0.35, { vol: 0.07 }); },
+    zglyph() { notes([[392, 0.9, 0], [494, 0.9, 0], [587, 0.9, 0], [784, 1.1, 0.05]], { type: 'triangle', vol: 0.08, attack: 0.12 }); noise(0.8, { vol: 0.12, freq: 800, slide: 4000, q: 1.5, attack: 0.3 }); },
+    gpurity() {
+      notes([[523, 1.6, 0], [659, 1.6, 0.05], [784, 1.6, 0.1], [988, 1.6, 0.15], [1318, 1.8, 0.2], [1976, 2, 0.3]], { type: 'sine', vol: 0.06, attack: 0.25 });
+      tone(55, 1.8, { vol: 0.4, attack: 0.2 }); noise(1.6, { vol: 0.15, freq: 6000, slide: 300, q: 2, attack: 0.4 });
+    },
     gcharge() { tone(160, 1.3, { type: 'triangle', vol: 0.12, slide: 880, attack: 0.3 }); noise(1.3, { vol: 0.07, freq: 400, slide: 3200, q: 2, attack: 0.5 }); },
     ghint() { tone(700, 0.14, { type: 'square', vol: 0.06, slide: 1400 }); tone(1400, 0.2, { vol: 0.06, delay: 0.05 }); },
     greveal0() { notes([[523, 0.14, 0], [784, 0.3, 0.08]], { type: 'triangle', vol: 0.16 }); noise(0.25, { vol: 0.15, type: 'lowpass', freq: 900 }); },

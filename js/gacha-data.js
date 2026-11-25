@@ -15,9 +15,10 @@
 const RARITIES = [
   { id: 'C', name: 'Common', color: '#9aa3af', glow: '#e5e7eb', rate: 50, shards: 5, upBase: 6, stars: 1 },
   { id: 'R', name: 'Rare', color: '#22c55e', glow: '#86efac', rate: 30, shards: 12, upBase: 10, stars: 2 },
-  { id: 'SR', name: 'Super Rare', color: '#3b82f6', glow: '#93c5fd', rate: 14, shards: 30, upBase: 18, stars: 3 },
-  { id: 'E', name: 'Epic', color: '#a855f7', glow: '#d8b4fe', rate: 5, shards: 80, upBase: 30, stars: 4 },
-  { id: 'L', name: 'Legendary', color: '#f5b301', glow: '#fde68a', rate: 1, shards: 200, upBase: 50, stars: 5 },
+  { id: 'MR', name: 'Major Rare', color: '#3b82f6', glow: '#93c5fd', rate: 14.7, shards: 30, upBase: 18, stars: 3 },
+  { id: 'UR', name: 'Ultra Rare', color: '#f5b301', glow: '#fde68a', rate: 5, shards: 80, upBase: 30, stars: 4 },
+  // Purities: an extremely rare, mysterious tier above Ultra Rare.
+  { id: 'P', name: 'Purities', single: 'Purity', color: '#e879f9', glow: '#fdf4ff', rate: 0.3, shards: 300, upBase: 60, stars: 5 },
 ];
 const RARITY = Object.fromEntries(RARITIES.map((r, i) => [r.id, Object.assign({ idx: i }, r)]));
 
@@ -52,92 +53,96 @@ const HEROES = [
     desc: 'Chops trees, logs and enemy lines with equal enthusiasm.', ability: 'Wide Chop: axe swings hit every enemy in reach.',
     cost: 260, cd: 8, hp: 420, dmg: 38, rate: 1.4, range: 48, speed: 44, kb: 2,
     attack: 'area', anim: 'slash', animDur: 0.5, color: '#b45309', look: { weapon: 'axe', head: ['beard', 'bandana'] } },
-  // ----- Super Rare -----
-  { id: 'h_storm', rarity: 'SR', name: 'Stormstep', short: 'Storm', role: 'Assassin',
+  // ----- Major Rare -----
+  { id: 'h_storm', rarity: 'MR', name: 'Stormstep', short: 'Storm', role: 'Assassin',
     desc: 'Moves between raindrops. Usually arrives before the thunder.', ability: 'Lightning Reflexes: dodges 35% of attacks, 25% crit chance.',
     cost: 220, cd: 5, hp: 220, dmg: 16, rate: 0.28, range: 34, speed: 140, kb: 2, dodge: 0.35, crit: 0.25, run: 'run',
     attack: 'melee', anim: 'ninja', animDur: 0.24, color: '#2563eb',
     look: { weapon: 'katana', head: ['ninjaband'], face: 'ninja', headFill: '#1e2a4a', band: '#60a5fa', ink: '#0b1736' } },
-  { id: 'h_grove', rarity: 'SR', name: 'Grove Mender', short: 'Mender', role: 'Support',
+  { id: 'h_grove', rarity: 'MR', name: 'Grove Mender', short: 'Mender', role: 'Support',
     desc: 'An old hermit whose garden heals anything planted in it, including stickmen.', ability: 'Bloom Pulse: big heals over a wide radius.',
     cost: 300, cd: 12, hp: 300, dmg: 0, heal: 70, healR: 210, rate: 2.2, range: 150, speed: 40, kb: 1,
     attack: 'heal', anim: 'heal', animDur: 0.6, color: '#4ade80', hold: { shF: 0.4, elF: 0.9 },
     look: { weapon: 'wand', head: ['hood', 'beard'], hoodColor: '#15803d' } },
-  { id: 'h_fizz', rarity: 'SR', name: 'Fizzbang', short: 'Fizzbang', role: 'Splash',
+  { id: 'h_fizz', rarity: 'MR', name: 'Fizzbang', short: 'Fizzbang', role: 'Splash',
     desc: 'Mixes fireworks with bombs. Safety goggles are purely decorative.', ability: 'Mega Blast: bombs explode in a 105px radius.',
     cost: 320, cd: 10, hp: 190, dmg: 85, rate: 2.5, range: 210, speed: 40, kb: 1, aoe: 105,
     attack: 'bomb', anim: 'throw', animDur: 0.6, color: '#ec4899', look: { weapon: 'bomb', head: ['goggles'], back: 'bombpack', ink: '#4a0d2a' } },
-  // ----- Epic -----
-  { id: 'h_ronin', rarity: 'E', name: 'Inkblade Ronin', short: 'Ronin', role: 'Duelist',
+  // ----- Ultra Rare -----
+  { id: 'h_ronin', rarity: 'UR', name: 'Inkblade Ronin', short: 'Ronin', role: 'Duelist',
     desc: 'A wandering swordsman drawn in a single unbroken brushstroke.', ability: 'Ink Crescent: blindingly fast slashes that hit every foe in reach.',
     cost: 450, cd: 14, hp: 950, dmg: 40, rate: 0.55, range: 58, speed: 60, kb: 3, crit: 0.2,
     attack: 'area', anim: 'ninja', animDur: 0.3, scale: 1.12, color: '#111827',
     look: { weapon: 'katana', head: ['ninjaband'], band: '#111827', cape: '#1f2937' } },
-  { id: 'h_comet', rarity: 'E', name: 'Comet Sage', short: 'Comet', role: 'Mage',
+  { id: 'h_comet', rarity: 'UR', name: 'Comet Sage', short: 'Comet', role: 'Mage',
     desc: 'Catches falling stars and throws them back, slightly annoyed.', ability: 'Starfall: huge magic splash that slows everything it hits.',
     cost: 480, cd: 14, hp: 260, dmg: 75, rate: 2.0, range: 260, speed: 36, kb: 1, aoe: 90, slow: 3,
     attack: 'magic', anim: 'staff', animDur: 0.65, color: '#60a5fa', hold: { shF: 0.4, elF: 0.9 },
     look: { weapon: 'staff', head: ['wizhat', 'beard'], aura: '#60a5fa', ink: '#1e3a8a' } },
-  // ----- Legendary -----
-  { id: 'h_sol', rarity: 'L', name: 'Sol, the Gilded', short: 'Sol', role: 'Champion',
-    desc: 'Legend says the sun itself once doodled a hero. This is him.', ability: 'Solar Hammer: massive area smashes that shake the earth and launch foes.',
+  // ----- Purities -----
+  { id: 'h_sol', rarity: 'P', name: 'Sol, the Gilded', short: 'Sol', role: 'Champion',
+    desc: 'Legend says the sun itself once doodled a hero. This is him.',
+    ability: 'Solar Hammer: earth-shaking area smashes. PURITY, Eternal Noon: while Sol stands on the field your gold income is +30%.', goldAura: 0.3,
     cost: 900, cd: 26, hp: 3600, dmg: 210, rate: 2.0, range: 72, speed: 34, kb: 3, kbChance: 0.6, shake: 8, heavy: true,
     attack: 'area', anim: 'slam', animDur: 0.8, scale: 1.6, color: '#f5b301',
     look: { weapon: 'hammer', head: ['crown'], cape: '#f59e0b', aura: '#fde047', ink: '#7c4a03' } },
 
   // ----- Banner exclusives (limited) -----
-  { id: 'h_lantern', rarity: 'E', limited: 'lights', name: 'Lantern Duelist', short: 'Lantern', role: 'Duelist',
+  { id: 'h_lantern', rarity: 'UR', limited: 'lights', name: 'Lantern Duelist', short: 'Lantern', role: 'Duelist',
     desc: 'Guards the paper-lantern festival, blade glowing like a candle.', ability: 'Festival Spark: 30% crits and a 30% chance to knock foes back.',
     cost: 420, cd: 12, hp: 720, dmg: 58, rate: 0.7, range: 36, speed: 62, kb: 2, crit: 0.3, kbChance: 0.3,
     attack: 'melee', anim: 'slash', animDur: 0.38, color: '#fb923c',
     look: { weapon: 'sword', head: ['hood'], hoodColor: '#ea580c', aura: '#fdba74' } },
-  { id: 'h_thorn', rarity: 'L', limited: 'thicket', name: 'Thornback Juggernaut', short: 'Thornback', role: 'Juggernaut',
-    desc: 'A walking bramble patch. Hugging him is not recommended.', ability: 'Bramble Hide: takes 35% less damage; spiked club smashes the whole area.',
+  { id: 'h_thorn', rarity: 'P', limited: 'thicket', name: 'Thornback Juggernaut', short: 'Thornback', role: 'Juggernaut',
+    desc: 'A walking bramble patch. Hugging him is not recommended.', ability: 'Bramble Hide: takes 35% less damage. PURITY, Thorn Mirror: reflects 40% of damage taken back at nearby attackers.', fx: 'thorns',
     cost: 1000, cd: 28, hp: 5200, dmg: 160, rate: 2.3, range: 70, speed: 24, kb: 3, armor: 0.35, kbChance: 0.4, shake: 7, heavy: true,
     attack: 'area', anim: 'slam', animDur: 0.9, scale: 1.9, color: '#15803d',
     look: { weapon: 'bigclub', head: ['spikehelm'], aura: '#4ade80', ink: '#14532d' } },
-  { id: 'h_phantom', rarity: 'SR', limited: 'glitch', name: 'Pixel Phantom', short: 'Phantom', role: 'Assassin',
+  { id: 'h_phantom', rarity: 'MR', limited: 'glitch', name: 'Pixel Phantom', short: 'Phantom', role: 'Assassin',
     desc: 'Escaped from an old arcade cabinet. Flickers in and out of existence.', ability: 'Glitch Out: dodges 50% of all attacks.',
     cost: 240, cd: 6, hp: 200, dmg: 22, rate: 0.35, range: 34, speed: 120, kb: 2, dodge: 0.5, run: 'run',
     attack: 'melee', anim: 'ninja', animDur: 0.26, color: '#a855f7',
     look: { weapon: 'katana', head: ['fullhelm'], face: 'visor', headFill: '#1a1033', ink: '#4c1d95' } },
-  { id: 'h_tide', rarity: 'E', limited: 'deep', name: 'Tidecaller', short: 'Tide', role: 'Mage',
+  { id: 'h_tide', rarity: 'UR', limited: 'deep', name: 'Tidecaller', short: 'Tide', role: 'Mage',
     desc: 'Summons waves from a seashell. The beach misses her terribly.', ability: 'Riptide: splash orbs that knock enemies back.',
     cost: 430, cd: 13, hp: 280, dmg: 62, rate: 2.1, range: 240, speed: 38, kb: 1, aoe: 75, kbChance: 0.35,
     attack: 'magic', anim: 'staff', animDur: 0.65, color: '#06b6d4', hold: { shF: 0.4, elF: 0.9 },
     look: { weapon: 'staff', head: ['hood'], hoodColor: '#0891b2', aura: '#67e8f9', ink: '#164e63' } },
 
   // ----- Gacha exclusives with unique mechanics -----
-  { id: 'h_drummer', rarity: 'SR', exclusive: true, name: 'Rally Drummer', short: 'Drummer', role: 'Buffer',
+  { id: 'h_drummer', rarity: 'MR', exclusive: true, name: 'Rally Drummer', short: 'Drummer', role: 'Buffer',
     desc: 'Keeps the beat so the whole army fights in rhythm. Never attacks, never stops drumming.',
     ability: 'War Beat: allies within 170px deal +35% damage, attack 30% faster and march 15% faster.',
     cost: 240, cd: 9, hp: 320, dmg: 0, rate: 1, range: 150, speed: 44, kb: 1,
     attack: 'none', anim: 'drum', animDur: 0.6, loopAnim: true, aura: { r: 170, every: 0.5, dur: 1.2 }, color: '#dc2626',
     hold: { shF: 0.9, elF: 1.2, shB: 0.8, elB: 1.3 }, look: { weapon: 'drumsticks', front: 'drum', head: ['plume'] } },
-  { id: 'h_architect', rarity: 'SR', exclusive: true, name: 'Pencil Architect', short: 'Architect', role: 'Builder',
+  { id: 'h_architect', rarity: 'MR', exclusive: true, name: 'Pencil Architect', short: 'Architect', role: 'Builder',
     desc: 'Sketches a barricade in seconds, then argues with it about the blueprints.',
     ability: 'Blueprint Wall: builds a sturdy barricade ahead of the army that blocks enemies for 20s.',
     cost: 280, cd: 12, hp: 260, dmg: 0, rate: 10, range: 170, speed: 42, kb: 1,
     attack: 'build', anim: 'build', animDur: 0.8, build: { hp: 1500, life: 20 }, color: '#eab308',
     look: { weapon: 'mallet', head: ['hardhat'], back: 'planks' } },
-  { id: 'h_inkwell', rarity: 'E', exclusive: true, name: 'Inkwell Artist', short: 'Inkwell', role: 'Summoner',
+  { id: 'h_inkwell', rarity: 'UR', exclusive: true, name: 'Inkwell Artist', short: 'Inkwell', role: 'Summoner',
     desc: 'Paints little stick soldiers that leap right off the canvas and into the fight.',
     ability: 'Living Doodles: paints 2 doodle soldiers every 6s (up to 6 at once). Doodles fade after 18s.',
     cost: 420, cd: 14, hp: 280, dmg: 0, rate: 6, range: 220, speed: 38, kb: 1,
     attack: 'paint', anim: 'sweep', animDur: 0.6, minions: { n: 2, max: 6, life: 18 }, color: '#1d4ed8',
     look: { weapon: 'brush', head: ['beret'], back: 'inkpot' } },
-  { id: 'h_chrono', rarity: 'E', exclusive: true, name: 'Chrono Keeper', short: 'Chrono', role: 'Controller',
+  { id: 'h_chrono', rarity: 'UR', exclusive: true, name: 'Chrono Keeper', short: 'Chrono', role: 'Controller',
     desc: 'Keeper of the great pocket watch. Extremely strict about punctuality.',
     ability: 'Time Stop: freezes every enemy in a 100px area for 2s (bosses 0.7s).',
     cost: 400, cd: 13, hp: 240, dmg: 20, rate: 4.5, range: 230, speed: 36, kb: 1, aoe: 100, freeze: 2,
     attack: 'chrono', anim: 'staff', animDur: 0.7, color: '#0ea5e9', hold: { shF: 0.4, elF: 0.9 },
     look: { weapon: 'clockstaff', head: ['tophat'], cape: '#0c4a6e' } },
-  { id: 'h_eraser', rarity: 'L', exclusive: true, name: 'Eraser Knight', short: 'Eraser', role: 'Executioner',
+  { id: 'h_eraser', rarity: 'P', exclusive: true, name: 'Eraser Knight', short: 'Eraser', role: 'Executioner',
     desc: 'Wields a pencil the size of a lamppost. Mistakes get erased. So do enemies.',
-    ability: "Clean Slate: hits deal +7% of the target's max HP (4% vs bosses) and erase non-boss foes below 20% HP.",
+    ability: "PURITY, Clean Slate: hits deal +7% of the target's max HP (4% vs bosses) and instantly erase non-boss foes below 20% HP.",
     cost: 750, cd: 22, hp: 1600, dmg: 90, rate: 1.3, range: 46, speed: 40, kb: 2, scale: 1.35, pctDmg: 0.07, execute: 0.2,
     attack: 'erase', anim: 'slash', animDur: 0.55, color: '#f472b6',
     look: { weapon: 'pencil', head: ['fullhelm'], face: 'visor', headFill: '#e5e7eb', cape: '#f9a8d4' } },
+
+  // ----- Zodiac (Ultra Rare, Zodiac banner only): see zodiac-data.js -----
+  ...ZODIAC_HEROES,
 ];
 const HERO_BY_ID = Object.fromEntries(HEROES.map(h => [h.id, h]));
 
@@ -148,6 +153,7 @@ const SPAWNED = {
   wall: { id: 'wall', name: 'Sketch Barricade', structure: true, hp: 1500, dmg: 0, rate: 99, range: 0, speed: 0, kb: 1,
     attack: 'none', anim: 'slash', animDur: 1, color: '#a16207', look: {} },
 };
+Object.assign(SPAWNED, ZODIAC_SPAWNED);
 // Battle code expects these fields on every unit definition.
 for (const h of HEROES) { h.hero = true; h.unlock = 0; }
 
@@ -158,27 +164,32 @@ const BANNER_EPOCH = Date.UTC(2026, 0, 1);
 const BANNERS = [
   { id: 'standard', name: 'Standard Summon', tag: 'PERMANENT', permanent: true,
     desc: 'Every non-limited Stickfigure can appear here.', colors: ['#3b2a6b', '#6d4bd1'], featured: ['h_sol', 'h_comet', 'h_ronin'] },
+  { id: 'zodiac', name: 'Zodiac Summon', tag: 'ZODIAC', permanent: true, zodiac: true, colors: ['#0b1033', '#312e81'],
+    rates: [49.7, 30, 14, 6, 0.3], exclusiveRarity: 'UR', featuredChance: 0.5,
+    get featured() { return [zodiacSeason(Meta.now()).hero.id]; },
+    desc: 'All 12 Zodiac Stickfigures live here: every Ultra Rare from this banner is a Zodiac, and the sign of the season gets a 50% rate-up.' },
   { id: 'lights', name: 'Festival of Lights', tag: 'LIMITED',
-    desc: 'The Lantern Duelist joins for a limited time! Epic rate-up.', colors: ['#7c2d12', '#f97316'], featured: ['h_lantern', 'h_ember'] },
+    desc: 'The Lantern Duelist joins for a limited time! Ultra Rare rate-up.', colors: ['#7c2d12', '#f97316'], featured: ['h_lantern', 'h_ember'] },
   { id: 'thicket', name: 'Wild Thicket', tag: 'LIMITED',
-    desc: 'Legendary Thornback Juggernaut stomps out of the woods!', colors: ['#14532d', '#22c55e'], featured: ['h_thorn', 'h_lumber'] },
+    desc: 'The Thornback Juggernaut, a rare Purity, stomps out of the woods!', colors: ['#14532d', '#22c55e'], featured: ['h_thorn', 'h_lumber'] },
   { id: 'glitch', name: 'Glitch Week', tag: 'LIMITED',
-    desc: 'Pixel Phantom has escaped the arcade. Super Rare rate-up!', colors: ['#2e1065', '#c026d3'], featured: ['h_phantom', 'h_storm'] },
+    desc: 'Pixel Phantom has escaped the arcade. Major Rare rate-up!', colors: ['#2e1065', '#c026d3'], featured: ['h_phantom', 'h_storm'] },
   { id: 'studio', name: 'Masterwork Studio', tag: 'LIMITED',
     desc: 'Exclusive units on rate-up: Eraser Knight, Inkwell Artist and Chrono Keeper!', colors: ['#831843', '#f472b6'], featured: ['h_eraser', 'h_inkwell', 'h_chrono'] },
   { id: 'parade', name: 'Grand Parade', tag: 'LIMITED',
-    desc: 'The Rally Drummer and Pencil Architect lead the march. Super Rare rate-up!', colors: ['#7c2d12', '#eab308'], featured: ['h_drummer', 'h_architect'] },
+    desc: 'The Rally Drummer and Pencil Architect lead the march. Major Rare rate-up!', colors: ['#7c2d12', '#eab308'], featured: ['h_drummer', 'h_architect'] },
   { id: 'deep', name: 'Deep Blue', tag: 'LIMITED',
-    desc: 'Tidecaller rides in on the tide. Epic rate-up!', colors: ['#083344', '#06b6d4'], featured: ['h_tide', 'h_frost'] },
+    desc: 'Tidecaller rides in on the tide. Ultra Rare rate-up!', colors: ['#083344', '#06b6d4'], featured: ['h_tide', 'h_frost'] },
 ];
 const BANNER_BY_ID = Object.fromEntries(BANNERS.map(b => [b.id, b]));
 const LIMITED_BANNERS = BANNERS.filter(b => !b.permanent);
 
 const GACHA = {
   single: 100,          // Stick Tokens per summon
-  multi: 900,           // 10 summons (one Super Rare or better guaranteed)
+  multi: 900,           // 10 summons (one Major Rare or better guaranteed)
   featuredChance: 0.6,  // chance a pull of a featured rarity is a featured figure
-  pity: 80,             // Legendary guaranteed after this many pulls without one
+  pity: 60,             // Ultra Rare or better guaranteed after this many pulls without one
+  purityPity: 300,      // hidden: a Purity is guaranteed after this many pulls without one
   welcome: 500,         // one-time starter gift
 };
 
@@ -221,7 +232,10 @@ const ACHIEVEMENTS = [
   { id: 'pulls100', name: 'Summoner Supreme', text: 'Summon 100 times', goal: 100, reward: 300, progress: s => s.life.pulls || 0 },
   { id: 'collect5', name: 'Collector', text: 'Own 5 different Stickfigures', goal: 5, reward: 150, progress: s => Object.keys(s.heroes).length },
   { id: 'collectAll', name: 'Complete Collection', text: `Own all ${HEROES.length} Stickfigures`, goal: HEROES.length, reward: 1000, progress: s => Object.keys(s.heroes).length },
-  { id: 'legend', name: 'Golden Moment', text: 'Pull a Legendary Stickfigure', goal: 1, reward: 200, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && HERO_BY_ID[id].rarity === 'L').length },
+  { id: 'legend', name: 'Golden Moment', text: 'Pull an Ultra Rare Stickfigure', goal: 1, reward: 200, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && RARITY[HERO_BY_ID[id].rarity].idx >= 3).length },
+  { id: 'purity', name: 'Pure Light', text: 'Pull a Purity', goal: 1, reward: 500, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && HERO_BY_ID[id].rarity === 'P').length },
+  { id: 'zodiac6', name: 'Star Chart', text: 'Own 6 Zodiac Stickfigures', goal: 6, reward: 300, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && HERO_BY_ID[id].zodiac).length },
+  { id: 'zodiac12', name: 'Full Zodiac', text: 'Own all 12 Zodiac Stickfigures', goal: 12, reward: 1500, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && HERO_BY_ID[id].zodiac).length },
   { id: 'herolv5', name: 'Power Up', text: 'Raise a Stickfigure to level 5', goal: 5, reward: 150, progress: s => Math.max(0, ...Object.values(s.heroes).map(h => h.lv)) },
   { id: 'endless15', name: 'Endless Endurance', text: 'Survive 15 Endless waves', goal: 15, reward: 250, progress: s => s.endlessBest || 0 },
 ];

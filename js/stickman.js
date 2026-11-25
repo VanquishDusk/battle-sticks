@@ -45,6 +45,12 @@ const Stick = (() => {
     drum: { hit: 0.5, k: [[0, S({ shF: 1.25, elF: 1.7, shB: 0.6, elB: 0.9 })], [0.5, S({ shF: 0.6, elF: 0.9, shB: 1.2, elB: 1.7 })], [1, S({ shF: 1.25, elF: 1.7, shB: 0.6, elB: 0.9 })]] },
     build: { hit: 0.68, k: [[0, STANCE], [0.5, S({ shF: 2.9, elF: 0.3, lean: 0.25, hipF: 0.9, kneeF: 1.7, hipB: -0.5, kneeB: 1.3, head: 0.2 })],
       [0.7, S({ shF: 0.25, elF: 0.1, lean: 0.5, hipF: 0.9, kneeF: 1.7, hipB: -0.5, kneeB: 1.3, head: 0.3 })], [0.85, S({ shF: 0.4, elF: 0.2, lean: 0.45, hipF: 0.9, kneeF: 1.7, hipB: -0.5, kneeB: 1.3 })], [1, STANCE]] },
+    sting: { hit: 0.58, k: [[0, STANCE], [0.42, S({ lean: -0.35, shF: 0.5, elF: 1.7, shB: 0.3, elB: 1.7, hipF: 0.45, kneeF: 0.6, bx: -3 })],
+      [0.6, S({ lean: 0.5, bx: 8, shF: 1.3, elF: 0.3, shB: 1.1, elB: 0.5 })], [1, STANCE]] },
+    pour: { hit: 0.6, rest: S({ shF: 0.9, elF: 1.0 }), k: [[0, S({ shF: 0.9, elF: 1.0 })], [0.42, S({ shF: 2.7, elF: 0.5, shB: 2.0, elB: 0.6, lean: -0.15, head: -0.15 })],
+      [0.62, S({ shF: 1.7, elF: -0.1, shB: 1.4, elB: 0.2, lean: 0.35, bx: 4 })], [1, S({ shF: 0.9, elF: 1.0 })]] },
+    balance: { hit: 0.55, rest: S({ shF: 1.35, elF: 0.2, shB: 1.25, elB: 0.25, lean: 0 }),
+      k: [[0, S({ shF: 1.35, elF: 0.2, shB: 1.25, elB: 0.25, lean: 0 })], [0.5, S({ shF: 2.6, elF: 0.1, shB: 2.4, elB: 0.1, lean: -0.1, head: -0.2 })], [1, S({ shF: 1.35, elF: 0.2, shB: 1.25, elB: 0.25, lean: 0 })]] },
     fuse: { hit: 0.95, k: [[0, STANCE], [0.9, S({ shF: 2.6, elF: 0.5, shB: 2.4, elB: 0.5, lean: 0.3 })], [1, S({ shF: 2.6, elF: 0.5, shB: 2.4, elB: 0.5, lean: 0.3 })]] },
   };
   const KB_POSE = P({ lean: -0.42, shF: 2.3, elF: 0.5, shB: 1.9, elB: 0.6, hipF: 0.75, kneeF: 1.0, hipB: 0.35, kneeB: 0.7, head: -0.2 });
@@ -600,6 +606,12 @@ const Stick = (() => {
       circ(c, 4, -1.4, 1.1, '#ff4040'); circ(c, 7, -1.4, 1.1, '#ff4040');
       return;
     }
+    if (f === 'void') {
+      c.globalAlpha *= 0.45; circ(c, 4.8, -1.5, 4.2, '#a855f7'); c.globalAlpha = o.alpha;
+      poly(c, [1.6, -3.2, 4.8, -1.6, 1.8, -0.4], '#e9d5ff', null);
+      poly(c, [5.4, -1.6, 8.2, -3.2, 8, -0.4], '#e9d5ff', null);
+      return;
+    }
     if (f === 'skull') {
       c.beginPath(); c.arc(1.5, 0.5, HR - 1, -1.3, 1.6); c.closePath();
       c.fillStyle = '#e7e5e4'; c.fill(); c.strokeStyle = o.ink; c.lineWidth = 1; c.stroke();
@@ -659,6 +671,7 @@ const Stick = (() => {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -30, 42, 0, TAU); ctx.fill();
       ctx.globalAlpha = o.alpha;
     }
+    if (look.under) for (const n of look.under) if (LAYER[n]) LAYER[n](ctx, J, o, 'under');
     if (look.cape) drawCape(ctx, J, look.cape, o.t, o);
     if (look.back && BACK[look.back]) BACK[look.back](ctx, J, o);
 
@@ -666,6 +679,7 @@ const Stick = (() => {
     if (look.weapon === 'drumsticks') inHand(ctx, J, 1, c => { seg(c, 0, 2, 0, -13, '#854d0e', 1.8); circ(c, 0, -14, 2, '#fde68a', o.inkBack, 0.9); });
     if (look.weapon === 'gloves') { circ(ctx, J.hB.x, J.hB.y, 4.6, '#9f1239', o.inkBack, 1.4); }
     if (look.off && OFF[look.off]) OFF[look.off](ctx, J, o);
+    if (look.weapon && WPN_BACK[look.weapon]) WPN_BACK[look.weapon](ctx, J, o);
     limb(ctx, J.hip, J.kB, J.fB, o.inkBack, lw);
     seg(ctx, J.hip.x, J.hip.y, J.neck.x, J.neck.y, o.ink, lw + 0.3);
     limb(ctx, J.hip, J.kF, J.fF, o.ink, lw);
@@ -678,9 +692,11 @@ const Stick = (() => {
       ctx.stroke();
       ctx.beginPath(); ctx.ellipse(x, y - 6, 8, 2.6, 0, 0, TAU); ctx.fillStyle = '#fef3c7'; ctx.fill(); ctx.strokeStyle = o.ink; ctx.lineWidth = 1.2; ctx.stroke();
     }
+    if (look.body) for (const n of look.body) if (LAYER[n]) LAYER[n](ctx, J, o, 'body');
     drawHead(ctx, J, o);
     limb(ctx, J.s, J.eF, J.hF, o.ink, lw);
     if (look.weapon && WPN[look.weapon]) WPN[look.weapon](ctx, J, o);
+    if (look.over) for (const n of look.over) if (LAYER[n]) LAYER[n](ctx, J, o, 'over');
 
     if (o.stun) {
       for (let i = 0; i < 3; i++) {
@@ -725,7 +741,7 @@ const Stick = (() => {
       idlePose(def, 0, 0, pose);
     }
     draw(ctx, {
-      x, y, s, dir: dirOverride || (team === 0 ? 1 : -1), pose, look: def.look, def, team, t, alpha: 1, flash: false,
+      preview: true, x, y, s, dir: dirOverride || (team === 0 ? 1 : -1), pose, look: def.look, def, team, t, alpha: 1, flash: false,
       state: fake.state, atkU: fake.state === 'attack' ? fake.atkT / fake.animDur : -1, dead: false, color: def.color, seed: 1,
     });
   }
@@ -747,5 +763,8 @@ const Stick = (() => {
     drawPreview(ctx, def, team, cw / 2 - (team === 0 ? 4 : -4) * s, ch - 5, s, opts.t || 0, opts.mode || 'idle');
   }
 
-  return { draw, drawUnit, drawPreview, renderIcon, unitPose, ANIMS, KB_DUR, HR };
+  /* Registries other modules can extend with new designs. */
+  const LAYER = {}, WPN_BACK = {};
+  const H = { circ, seg, poly, limb, inHand, torsoPt, mixHex, bombShape };
+  return { draw, drawUnit, drawPreview, renderIcon, unitPose, ANIMS, KB_DUR, HR, WPN, WPN_BACK, HEAD, BACK, OFF, LAYER, H, P, S, STANCE };
 })();
