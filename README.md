@@ -46,7 +46,7 @@ Progress is saved automatically in `localStorage`.
 * **Summon** on banners: 100 tokens for one, 900 for ten (Major Rare or better guaranteed). Rarities: **Common** (50%), **Rare** (30%), **Major Rare** (14.7%), **Ultra Rare** (5%) and the mysterious **Purities** (0.3%). An Ultra Rare or better is guaranteed every 60 summons, and a hidden guarantee eventually delivers a Purity.
 * **Purities** are the rarest tier: their own void-and-prism summon sequence, a prismatic shimmer in battle, and traits that bend the rules (Sol raises your gold income, Thornback reflects damage, Eraser Knight erases weakened foes).
 * A permanent **Standard** banner, the permanent **Zodiac** banner (below), and two **limited banners** that rotate every 2 days with live countdowns. Each limited banner has an exclusive Stickfigure (only obtainable while it's live) and rate-ups.
-* Duplicates become **Stick Shards**, used to level up Stickfigures (+12% stats per level, max 10).
+* Duplicates become **Stick Shards**, used to level up Stickfigures (+12% stats per level, max 10). Stickfigures can also be **trained with XP** in the Barracks.
 * The **Collection** screen shows every Stickfigure (silhouettes until summoned) and edits your 10-slot **battle squad**, so summoned Stickfigures fight alongside your regular units.
 
 **Gacha-exclusive units** (summon only), each with its own mechanic:
@@ -84,6 +84,35 @@ Special units plug into the battle engine through ability hooks in `js/abilities
 
 The summonable roster, banners, rates, quests and achievements live in `js/gacha-data.js`.
 
+## Evolution
+
+Every stickman, all 10 regular units and all 33 Stickfigures, **evolves at level 10**. Level a regular unit with XP in the Barracks, or a Stickfigure with shards or XP (Barracks **Stickfigures** tab or the Collection). When it hits Lv 10 the evolution plays straight away: the unit glows, light pours in, its normal and evolved silhouettes flicker faster and faster, then a flash reveals the new form with its name and a list of what changed. Units that were already Lv 10 get an **EVOLVE!** button.
+
+* **Stat boost:** most evolutions give +25% to +35% health and damage (healers get more healing), and many also improve a trait: Ranger Lord shoots farther, Shadow Master dodges more, Demolisher's blasts get bigger, Grand Architect builds a stronger barricade, and so on.
+* **New look:** every evolved form has a new name and a makeover: capes, crowns, upgraded gear, an evolved aura and a floating Evo crest. Zodiacs gain a star halo with their sign; Purities a prismatic halo.
+* **New moves:** the rarest units, every Ultra Rare and Purity, also learn a move on top of their original ability:
+
+| Move | What it does | Learned by |
+| --- | --- | --- |
+| Nova | Every few attacks, a burst hits everything nearby | Sol Invictus (High Noon), Supernova Ram |
+| Chain | Hits arc to more enemies | The Blank Page (arcs can erase weakened foes), Final Arbiter |
+| Meteor | A strike falls from the sky on the enemy front | Starfall Sage (Comet Fall), Solar Monarch |
+| Barrage | Volleys of homing projectiles | Master Painter, Cosmic Deluge |
+| Shockwave | A wave that rolls along the ground | Tidequeen (water), Peak Eternal (rock avalanche) |
+| Clone | Summons a translucent echo of itself for 12s | Lord of Hours, Binary Star |
+| Orbit | Orbiting shards damage anything close | Lantern Sovereign (lanterns), Moonlit Citadel (moons) |
+| Blink | Teleports to the deepest enemy and strikes it | Ink Shogun, Abyssal Stinger |
+| Rain | Rains attacks over an area | Galaxy Hunter |
+| Sanctuary | A zone that heals allies and hurts enemies | Astral Saint |
+| Rebirth | Rises again once per battle | Worldthorn, Dream Leviathan |
+| Fortify | An emergency shield and barrier when health drops low | Celestial Bastion |
+
+Purity traits grow too: Sol Invictus raises gold income by 60%, Worldthorn reflects 60% of damage, and The Blank Page erases foes below 30% health.
+
+**Normal or Evo, your choice:** once evolved, a **Normal / Evo** switch on the unit's Barracks card (and in the Collection) picks which form fights. Evolved units show an EVO badge in the deck, squad and battle bar.
+
+Evolution data lives in `js/evo.js` (forms and move settings), the moves in `js/abilities.js` (`EvoFX`), and the sequence and widgets in `js/evo-ui.js`.
+
 ## Code layout
 
 | File | Purpose |
@@ -97,8 +126,10 @@ The summonable roster, banners, rates, quests and achievements live in `js/gacha
 | `js/save.js` | Save data and progression helpers |
 | `js/meta.js` | Stick Tokens, daily rewards, quests, achievements, banner rotation, summoning, shards, squad |
 | `js/zodiac-art.js` | Zodiac designs, glyphs, constellations, zodiac wheel, astral fish |
-| `js/abilities.js` | Ability hooks for special units (Zodiacs, Purity traits) |
+| `js/evo.js` | Evolved forms for all 43 stickmen: names, stat boosts, looks, Evo moves, Normal/Evo choice |
+| `js/abilities.js` | Ability hooks for special units (Zodiacs, Purity traits) and the 12 Evo moves |
 | `js/gacha-ui.js` | Summon screen and reveal animation, collection and squad editor, quests and daily popups |
+| `js/evo-ui.js` | Evolution sequence, Normal/Evo switches, EVOLVE buttons |
 | `js/audio.js` | Synthesized sound effects and music |
 | `js/stickman.js` | Stickman skeleton, poses, animations, weapons and accessories |
 | `js/scenery.js` | Themed parallax backgrounds, weather, bases, world map |

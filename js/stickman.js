@@ -719,7 +719,7 @@ const Stick = (() => {
     _o.x = u.x; _o.y = u.y; _o.s = u.s; _o.dir = u.dir; _o.pose = _pose; _o.look = d.look; _o.def = d;
     _o.team = u.team; _o.t = t; _o.flash = u.flash > 0; _o.state = u.state;
     _o.atkU = u.state === 'attack' ? u.atkT / u.animDur : -1; _o.dead = !u.alive; _o.color = d.color; _o.seed = u.seed;
-    _o.alpha = u.alive ? 1 : U.clamp(1 - (u.deadT - 0.35) / 0.55, 0, 1);
+    _o.alpha = (u.alive ? 1 : U.clamp(1 - (u.deadT - 0.35) / 0.55, 0, 1)) * (u.spectral ? 0.62 : 1);
     _o.stun = u.stunT > 0 && u.alive;
     if (_o.alpha <= 0) return;
     draw(ctx, _o);

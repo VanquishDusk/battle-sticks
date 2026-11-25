@@ -213,6 +213,18 @@ const Meta = (() => {
   // ---------- Stickfigure levels ----------
   const heroMult = lv => 1 + 0.12 * (lv - 1);
   const heroUpCost = (h, lv) => RARITY[h.rarity].upBase * lv;
+  /** Stickfigures can also be trained with battle XP instead of shards. */
+  const heroXpCost = (h, lv) => heroUpCost(h, lv) * 8;
+  function upgradeHeroXP(id) {
+    const s = S(), h = HERO_BY_ID[id], o = s.heroes[id];
+    if (!h || !o || o.lv >= HERO_MAX_LV) return false;
+    const c = heroXpCost(h, o.lv);
+    if (s.xp < c) return false;
+    s.xp -= c; o.lv++;
+    track('upgrades');
+    changed();
+    return true;
+  }
   function upgradeHero(id) {
     const s = S(), h = HERO_BY_ID[id], o = s.heroes[id];
     if (!h || !o || o.lv >= HERO_MAX_LV) return false;
@@ -298,7 +310,7 @@ const Meta = (() => {
     questList, claimQuest, bonusState, claimBonus, msToNextDay, track,
     achList, claimAch, newAchievements, claimableCount,
     activeBanners, isActive, poolFor, bannerPool, pull, pityLeft, purityNear, ratesOf,
-    heroMult, heroUpCost, upgradeHero,
+    heroMult, heroUpCost, upgradeHero, heroXpCost, upgradeHeroXP,
     squad, equip, unequip, resetSquad, slotOf,
     creditBattle, battleTokens,
     setTimeOffset: ms => { timeOffset = ms; },

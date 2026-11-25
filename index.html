@@ -63,7 +63,8 @@
         <div class="topbar-right"><div class="tok-pill" title="Stick Tokens"><i class="tok"></i><span class="tok-n">0</span></div><div class="xp-pill"><i class="gem"></i><span class="xp-n">0</span> XP</div></div>
       </div>
       <div class="bk-tabs">
-        <button class="bk-tab active" data-bk="units">Level Up</button>
+        <button class="bk-tab active" data-bk="units">Stickmen</button>
+        <button class="bk-tab" data-bk="heroes">Stickfigures</button>
         <button class="bk-tab" data-bk="deck">Deck</button>
       </div>
       <div id="barracks-grid"></div>
@@ -321,6 +322,18 @@
         </div>
       </div>
     </div>
+    <div id="ov-evo" class="overlay">
+      <canvas id="evo-cv"></canvas>
+      <button class="btn btn-small pull-skip" id="btn-evo-skip">Skip &#9654;&#9654;</button>
+      <div class="evo-panel hidden" id="evo-panel">
+        <div class="ev-title">EVOLUTION COMPLETE</div>
+        <div class="ev-names"><span id="ev-from"></span><i>&#10140;</i><b id="ev-to"></b></div>
+        <ul id="ev-list"></ul>
+        <div id="ev-move"></div>
+        <div class="ev-note">Switch between Normal and Evo forms any time in the Barracks or Collection.</div>
+        <button class="btn btn-mid btn-evo" id="btn-ev-done">Awesome!</button>
+      </div>
+    </div>
     <div id="ach-stack"></div>
     <div id="toast"></div>
   </div>
@@ -343,11 +356,13 @@
 <script src="js/audio.js"></script>
 <script src="js/stickman.js"></script>
 <script src="js/zodiac-art.js"></script>
+<script src="js/evo.js"></script>
 <script src="js/scenery.js"></script>
 <script src="js/battle.js"></script>
 <script src="js/abilities.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/gacha-ui.js"></script>
+<script src="js/evo-ui.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

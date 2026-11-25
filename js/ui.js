@@ -139,62 +139,102 @@ const UI = (() => {
     const f = fmt || (v => U.fmt(v));
     return `<span>${label} <b>${f(now)}</b>${next != null ? ` <span class="up">&rarr;${f(next)}</span>` : ''}</span>`;
   }
+  const heroOrder = (a, b) => RARITY[b.rarity].idx - RARITY[a.rarity].idx;
   function buildBarracks() {
     const grid = $('#barracks-grid');
     grid.innerHTML = '';
     barracksCanvases = [];
-    for (const def of UNITS) {
-      const unlocked = Progress.isUnitUnlocked(def), lv = Progress.unitLv(def.id);
-      const m = Progress.unitMult(lv), mn = lv < UNIT_MAX_LV ? Progress.unitMult(lv + 1) : null;
-      const card = U.el('div', 'ucard' + (unlocked ? '' : ' locked'));
-      card.style.setProperty('--c', def.color);
-      card.innerHTML = `<div class="uc-top"></div>`;
-      const cv = U.el('canvas'); cv.width = 220; cv.height = 92;
-      card.appendChild(cv);
-      const body = U.el('div', null, `
-        <div class="uc-name">${unlocked ? def.name : '???'}<span class="uc-lv">${unlocked ? 'LV ' + lv : ''}</span></div>
-        <div class="uc-role">${def.role} &middot; ${def.attack === 'heal' ? 'Healer' : def.range > 120 ? 'Ranged' : def.attack === 'area' ? 'Area' : 'Melee'}</div>
-        <div class="uc-stats">
-          ${statRow('HP', def.hp * m, unlocked && mn ? def.hp * mn : null)}
-          ${def.attack === 'heal' ? statRow('Heal', def.heal * m, unlocked && mn ? def.heal * mn : null) : statRow('DMG', def.dmg * m, unlocked && mn ? def.dmg * mn : null)}
-          <span>Cost <b>${def.cost}</b></span><span>CD <b>${def.cd}s</b></span>
-          <span>Range <b>${def.range}</b></span><span>Speed <b>${def.speed}</b></span>
-        </div>`);
-      card.appendChild(body);
-      if (unlocked) {
-        const cost = Progress.unitUpCost(def, lv);
-        const btn = U.el('button', 'btn btn-green', lv >= UNIT_MAX_LV ? 'MAX LEVEL' : `Level up &middot; ${U.fmt(cost)} XP`);
-        btn.disabled = lv >= UNIT_MAX_LV || Save.d.xp < cost;
-        btn.addEventListener('click', () => {
-          if (Save.d.xp < cost || lv >= UNIT_MAX_LV) return;
-          Save.d.xp -= cost; Save.d.unitLv[def.id] = lv + 1; Meta.track('upgrades'); Save.save();
-          Sound.play('upgrade'); buildBarracks(); refreshXP();
-        });
-        card.appendChild(btn);
-      } else {
-        const L = Progress.unlockLevelOf(def);
-        card.appendChild(U.el('div', 'uc-lockmsg', `Clear Level ${L.n}: ${L.name}`));
-      }
-      grid.appendChild(card);
-      barracksCanvases.push({ cv, def, unlocked });
+    const heroes = bkTab === 'heroes';
+    const list = heroes ? HEROES.filter(h => Save.d.heroes[h.id]).sort(heroOrder) : UNITS;
+    grid.classList.toggle('scroll', list.length > 10);
+    if (heroes && !list.length) {
+      const e = U.el('div', 'bk-empty', '<b>No Stickfigures yet.</b> Summon some, then train and evolve them here.');
+      const go = U.el('button', 'btn btn-summon', '<i class="tok"></i>Go to Summon');
+      go.addEventListener('click', () => { click(); show('summon'); });
+      e.appendChild(go); grid.appendChild(e);
+      return;
     }
+    for (const base of list) grid.appendChild(unitCard(base));
+  }
+  /** A Barracks card: stats of the chosen form, level up, evolve, Normal / Evo switch. */
+  function unitCard(base) {
+    const id = base.id, hero = !!base.hero;
+    const unlocked = hero || Progress.isUnitUnlocked(base), lv = Evo.level(id), maxLv = hero ? HERO_MAX_LV : UNIT_MAX_LV;
+    const def = unlocked ? Evo.formDef(id) : base;
+    const mf = hero ? Meta.heroMult : Progress.unitMult;
+    const m = mf(lv), mn = unlocked && lv < maxLv ? mf(lv + 1) : null;
+    const card = U.el('div', 'ucard' + (unlocked ? '' : ' locked') + (hero ? ' hero r-' + base.rarity : '') + (def.evolved ? ' evo' : ''));
+    card.style.setProperty('--c', base.color);
+    card.innerHTML = `<div class="uc-top"></div>${hero ? `<span class="uc-r">${RARITY[base.rarity].id}</span>` : ''}${def.evolved ? '<span class="uc-evo">&#10022; EVO</span>' : ''}`;
+    const cv = U.el('canvas'); cv.width = 220; cv.height = 92;
+    card.appendChild(cv);
+    const name = unlocked ? def.name : '???';
+    const kind = def.attack === 'heal' ? 'Healer' : def.range > 120 ? 'Ranged' : def.attack === 'area' ? 'Area' : 'Melee';
+    const body = U.el('div', null, `
+      <div class="uc-name${name.length > 13 ? ' long' : ''}">${name}<span class="uc-lv">${unlocked ? 'LV ' + lv : ''}</span></div>
+      <div class="uc-role">${def.role} &middot; ${kind}</div>
+      <div class="uc-stats">
+        ${statRow('HP', def.hp * m, mn ? def.hp * mn : null)}
+        ${def.attack === 'heal' ? statRow('Heal', def.heal * m, mn ? def.heal * mn : null) : statRow('DMG', def.dmg * m, mn ? def.dmg * mn : null)}
+        <span>Cost <b>${def.cost}</b></span><span>CD <b>${def.cd}s</b></span>
+        <span>Range <b>${def.range}</b></span><span>Speed <b>${def.speed}</b></span>
+      </div>`);
+    card.appendChild(body);
+    const rebuild = () => { buildBarracks(); refreshXP(); };
+    if (!unlocked) {
+      const L = Progress.unlockLevelOf(base);
+      card.appendChild(U.el('div', 'uc-lockmsg', `Clear Level ${L.n}: ${L.name}`));
+    } else if (Evo.isEvolved(id)) {
+      const mv = def.evolved && def.evoMove;
+      card.appendChild(U.el('div', 'uc-evoline', mv ? `<span style="--mc:${mv.color}">NEW MOVE</span>${mv.name}` : def.evolved ? 'Evolved form' : `Evo: ${Evo.def(id).name}`));
+      card.appendChild(EvoUI.toggle(id, rebuild));
+    } else if (lv >= EVO_LV) {
+      card.appendChild(U.el('div', 'uc-evoline ready', `Ready to evolve into <b>${Evo.def(id).name}</b>`));
+      card.appendChild(EvoUI.evolveBtn(id, rebuild));
+    } else {
+      const ev = Evo.def(id);
+      card.appendChild(U.el('div', 'uc-evoline', `&#10022; Evolves at Lv ${EVO_LV}${ev.evoMove ? ' &middot; <b>new move!</b>' : ''}`));
+      const row = U.el('div', 'uc-btns');
+      const xpCost = hero ? Meta.heroXpCost(base, lv) : Progress.unitUpCost(base, lv);
+      const bx = U.el('button', 'btn btn-green', `${hero ? 'Train' : 'Level up'} &middot; ${U.fmt(xpCost)} XP`);
+      bx.disabled = Save.d.xp < xpCost;
+      bx.addEventListener('click', () => {
+        const ok = hero ? Meta.upgradeHeroXP(id) : Progress.levelUpUnit(id);
+        if (!ok) return;
+        Sound.play('upgrade'); rebuild(); EvoUI.afterLevelUp(id, rebuild);
+      });
+      row.appendChild(bx);
+      if (hero) {
+        const sc = Meta.heroUpCost(base, lv);
+        const bs = U.el('button', 'btn btn-teal', `<i class="shard"></i>${sc}`);
+        bs.title = `Level up with ${sc} Stick Shards`;
+        bs.disabled = Save.d.shards < sc;
+        bs.addEventListener('click', () => { if (Meta.upgradeHero(id)) { Sound.play('upgrade'); rebuild(); EvoUI.afterLevelUp(id, rebuild); } });
+        row.appendChild(bs);
+      }
+      card.appendChild(row);
+    }
+    barracksCanvases.push({ cv, def, unlocked });
+    return card;
   }
   // ---------------- deck editor (barracks) ----------------
   function setBkTab(tab) {
     bkTab = tab;
     $$('.bk-tab').forEach(b => b.classList.toggle('active', b.dataset.bk === tab));
-    $('#barracks-grid').classList.toggle('hidden', tab !== 'units');
+    $('#barracks-grid').classList.toggle('hidden', tab === 'deck');
     $('#deck-view').classList.toggle('hidden', tab !== 'deck');
-    if (tab === 'deck') buildDeck();
+    if (tab === 'deck') buildDeck(); else buildBarracks();
   }
   const unitDef = id => HERO_BY_ID[id] || UNIT_BY_ID[id];
   const isLocked = def => !def.hero && !Progress.isUnitUnlocked(def);
+  /** The form (Normal or Evo) a unit fights in. */
+  const formOf = id => (isLocked(unitDef(id)) ? unitDef(id) : Evo.formDef(id));
   function deckCard(def, cls, extra) {
     const locked = isLocked(def);
     const el = U.el('button', `dk-card ${cls}${def.hero ? ' hero r-' + def.rarity : ''}${locked ? ' locked' : ''}`);
     el.style.setProperty('--c', def.color);
     const tag = def.hero ? `<span class="dk-r">${RARITY[def.rarity].id}</span>` : '';
-    el.innerHTML = `${extra || ''}${tag}${def.exclusive ? '<span class="dk-ex">EXCLUSIVE</span>' : ''}<canvas></canvas>
+    el.innerHTML = `${extra || ''}${tag}${def.exclusive ? '<span class="dk-ex">EXCLUSIVE</span>' : ''}${EvoUI.badge(def)}<canvas></canvas>
       <div class="dk-name">${locked ? '???' : def.short}</div>
       <div class="dk-cost">${locked ? `<small>Level ${def.unlock}</small>` : `<i class="coin"></i>${def.cost}`}</div>`;
     Stick.renderIcon(el.querySelector('canvas'), def, 0, { w: 96, h: 70, scale: 0.88 });
@@ -204,15 +244,15 @@ const UI = (() => {
     const sq = Meta.squad();
     const slotsEl = $('#deck-slots'); slotsEl.innerHTML = '';
     sq.forEach((id, i) => {
-      const def = unitDef(id);
+      const def = formOf(id);
       const el = deckCard(def, 'slot-card' + (dkSel && dkSel.slot === i ? ' sel' : '') + (dkSel && dkSel.id ? ' target' : ''), `<span class="dk-key">${(i + 1) % 10}</span>`);
       el.addEventListener('click', () => deckClick({ slot: i }));
       slotsEl.appendChild(el);
     });
     const pool = $('#deck-pool'); pool.innerHTML = '';
     const owned = [...UNITS, ...HEROES.filter(h => Save.d.heroes[h.id]).sort((a, b) => RARITY[b.rarity].idx - RARITY[a.rarity].idx)];
-    for (const def of owned) {
-      const inDeck = sq.indexOf(def.id);
+    for (const b0 of owned) {
+      const def = formOf(b0.id), inDeck = sq.indexOf(def.id);
       const el = deckCard(def, 'pool-card' + (dkSel && dkSel.id === def.id ? ' sel' : '') + (inDeck >= 0 ? ' indeck' : ''),
         inDeck >= 0 ? `<span class="dk-in">IN DECK &middot; ${(inDeck + 1) % 10}</span>` : '');
       el.addEventListener('click', () => deckClick({ id: def.id }));
@@ -254,17 +294,17 @@ const UI = (() => {
       box.innerHTML = '<b>Tap a unit</b> then a deck slot to swap it in &mdash; or tap two deck slots to reorder them. Summoned Stickfigures fight alongside your regular units.';
       return;
     }
-    const def = unitDef(id), lv = def.hero ? Save.d.heroes[id].lv : Progress.unitLv(id);
+    const def = formOf(id), lv = Evo.level(id);
     const m = def.hero ? Meta.heroMult(lv) : Progress.unitMult(lv);
     box.className = def.hero ? 'r-' + def.rarity : '';
-    box.innerHTML = `<div class="di-name">${def.name} <small>${def.hero ? RARITY[def.rarity].name + ' · ' : ''}${def.role} · Lv ${lv}</small></div>
-      <div class="di-ab">${def.ability || def.desc}</div>
+    box.innerHTML = `<div class="di-name">${def.name}${EvoUI.badge(def)} <small>${def.hero ? RARITY[def.rarity].name + ' · ' : ''}${def.role} · Lv ${lv}</small></div>
+      <div class="di-ab">${def.ability || def.desc}${def.evoMove ? `<br><b style="color:${def.evoMove.color}">&#10022; ${def.evoMove.desc}</b>` : ''}</div>
       <div class="di-stats">HP <b>${U.fmt(def.hp * m)}</b> · ${def.attack === 'heal' ? 'Heal' : 'DMG'} <b>${U.fmt((def.attack === 'heal' ? def.heal : def.dmg) * m)}</b> · Range <b>${def.range}</b> · Cost <b>${def.cost}</b> · CD <b>${def.cd}s</b></div>
       <div class="di-hint">${dkSel.id ? 'Now tap a deck slot to place it.' : 'Tap a unit below to swap it into this slot, or another slot to swap places.'}</div>`;
   }
 
   function animateBarracks(t) {
-    if (bkTab !== 'units') return;
+    if (bkTab === 'deck') return;
     for (const c of barracksCanvases) {
       const def = c.def;
       Stick.renderIcon(c.cv, def, 0, { w: 220, h: 92, scale: def.scale > 1.5 ? 0.86 : 0.92, t, mode: c.unlocked ? 'anim' : 'idle' });
@@ -316,10 +356,10 @@ const UI = (() => {
     Progress.roster().forEach((entry, i) => {
       const def = entry.def;
       const r = b.rosterById[def.id];
-      const el = U.el('button', 'slot' + (r ? '' : ' locked') + (def.hero ? ` hero r-${def.rarity}` : ''));
+      const el = U.el('button', 'slot' + (r ? '' : ' locked') + (def.hero ? ` hero r-${def.rarity}` : '') + (def.evolved ? ' evo' : ''));
       el.style.setProperty('--c', def.color);
       el.innerHTML = `<div class="band"></div><span class="key">${(i + 1) % 10}</span><canvas width="76" height="66"></canvas>
-        <span class="nm">${r ? def.short : '???'}</span><span class="cost">${r ? `<i class="coin"></i>${def.cost}` : '&nbsp;'}</span>
+        ${def.evolved ? '<span class="evo-star">&#10022;</span>' : ''}<span class="nm">${r ? def.short : '???'}</span><span class="cost">${r ? `<i class="coin"></i>${def.cost}` : '&nbsp;'}</span>
         ${r ? '<div class="cdov"></div><div class="cdt"></div>' : `<div class="lk">${ICON.lock}</div>`}`;
       Stick.renderIcon(el.querySelector('canvas'), def, 0, { w: 76, h: 66, scale: def.scale > 1.5 ? 0.8 : 0.9 });
       const s = { el, def, unlocked: !!r, cdov: el.querySelector('.cdov'), cdt: el.querySelector('.cdt'), last: {} };
@@ -728,6 +768,7 @@ const UI = (() => {
     if (Game.screen === 'battle' && Game.battle) updateHud(Game.battle, dt);
     else if (Game.screen === 'barracks') animateBarracks(t);
     MetaUI.tick(dt, t);
+    EvoUI.tick(dt, t);
   }
 
   return { init, tick, show, toast, startBattle, overlay, togglePause };

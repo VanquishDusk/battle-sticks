@@ -80,7 +80,7 @@ const MetaUI = (() => {
     setTimeout(() => el.remove(), 1500);
   }
   function achPopups() {
-    if (anim) { setTimeout(achPopups, 1500); return; }
+    if (anim || (typeof EvoUI !== 'undefined' && EvoUI.running)) { setTimeout(achPopups, 1500); return; }
     const list = Meta.newAchievements();
     list.forEach((a, i) => setTimeout(() => {
       const el = U.el('div', 'ach-pop', `<div class="ap-ico">&#127942;</div><div><div class="ap-t">Achievement complete!</div><div class="ap-n">${a.name}</div><div class="ap-r">Claim <i class="tok"></i>${a.reward} in Quests</div></div>`);
@@ -743,8 +743,9 @@ const MetaUI = (() => {
       const o = s.heroes[h.id];
       const c = U.el('button', `hcard r-${h.rarity}${o ? '' : ' unowned'}${colSel === h.id ? ' sel' : ''}`);
       c.innerHTML = `${h.zodiac ? '<div class="hc-lim zd">ZODIAC</div>' : h.limited ? '<div class="hc-lim">LIMITED</div>' : h.exclusive ? '<div class="hc-lim ex">EXCLUSIVE</div>' : ''}${sq.includes(h.id) ? '<div class="hc-sq">SQUAD</div>' : ''}${h.zodiac ? `<div class="hc-z">${ZArt.glyphSVG(h.zodiac, o ? '#fde68a' : '#6b7280', 16)}</div>` : ''}<canvas></canvas>
-        <div class="hc-name">${o ? h.short : '???'}</div><div class="hc-foot"><span class="hc-stars">${starStr(rar(h).stars)}</span>${o ? `<span class="hc-lv">Lv${o.lv}</span>` : ''}</div>`;
-      Stick.renderIcon(c.querySelector('canvas'), h, 0, { w: 100, h: 74, scale: 0.92 });
+        <div class="hc-name">${o ? h.short : '???'}</div><div class="hc-foot"><span class="hc-stars">${starStr(rar(h).stars)}</span>${o ? `<span class="hc-lv">${Evo.isEvolved(h.id) ? '&#10022;' : ''}Lv${o.lv}</span>` : ''}</div>`;
+      if (o && Evo.active(h.id)) c.classList.add('evo');
+      Stick.renderIcon(c.querySelector('canvas'), o ? Evo.formDef(h.id) : h, 0, { w: 100, h: 74, scale: 0.92 });
       c.addEventListener('click', () => { colSel = h.id; Sound.play('click', 0); buildCollection(); });
       grid.appendChild(c);
     }
@@ -752,29 +753,40 @@ const MetaUI = (() => {
     renderSquad();
   }
   function renderDetail() {
-    const h = HERO_BY_ID[colSel], R = rar(h), o = Save.d.heroes[h.id];
+    const h0 = HERO_BY_ID[colSel], R = rar(h0), o = Save.d.heroes[h0.id];
+    const h = o ? Evo.formDef(h0.id) : h0;
     const lv = o ? o.lv : 1, m = Meta.heroMult(lv), mn = o && lv < HERO_MAX_LV ? Meta.heroMult(lv + 1) : null;
     const st = (label, base, fmt) => `<span>${label}<b>${fmt ? fmt(base * m) : U.fmt(base * m)}</b>${mn ? `<em>&rarr;${fmt ? fmt(base * mn) : U.fmt(base * mn)}</em>` : ''}</span>`;
     const banners = h.zodiac ? ['Zodiac Summon'] : h.limited ? [BANNER_BY_ID[h.limited].name + ' (limited)'] : ['Standard Summon', ...LIMITED_BANNERS.filter(b => b.featured.includes(h.id)).map(b => b.name + ' (rate-up)')];
     const d = $('#col-detail');
-    d.className = `r-${h.rarity}`;
+    d.className = `r-${h.rarity}${h.evolved ? ' evo' : ''}`;
     d.innerHTML = `<div class="cd-art"><canvas></canvas><div class="cd-rar" style="background:${R.color}">${starStr(R.stars)} ${(R.single || R.name).toUpperCase()}</div>${h.zodiac ? `<div class="cd-lim zd">${ZArt.glyphSVG(h.zodiac, '#fde68a', 14)} ${ZODIAC_BY_ID[h.zodiac].name.toUpperCase()}</div>` : h.limited ? '<div class="cd-lim">LIMITED</div>' : ''}</div>
-      <div class="cd-name">${o ? h.name + (h.title ? ` <small class="cd-title">${h.title}</small>` : '') : '??? ' + (R.single || R.name) + ' Stickfigure'}</div>
-      <div class="cd-role">${h.role} &middot; ${h.attack === 'heal' ? 'Healer' : h.range > 120 ? 'Ranged' : h.attack === 'area' ? 'Area melee' : 'Melee'}</div>
-      ${o ? `<div class="cd-desc">${h.desc}</div>` : ''}
+      <div class="cd-name">${o ? h.name + EvoUI.badge(h) + (h.title ? ` <small class="cd-title">${h.title}</small>` : '') : '??? ' + (R.single || R.name) + ' Stickfigure'}</div>
+      <div class="cd-role">${h.role} &middot; ${h.attack === 'heal' ? 'Healer' : h.range > 120 ? 'Ranged' : h.attack === 'area' ? 'Area melee' : 'Melee'}${o ? `<span class="cd-lv">LEVEL <b>${lv}</b> / ${HERO_MAX_LV} <span>&middot; owned x${o.copies || 1}</span></span>` : ''}</div>
+      ${o ? `<div class="cd-desc" title="${h.desc.replace(/"/g, '&quot;')}">${h.desc}</div>` : ''}
       <div class="cd-ab"><b>ABILITY</b> ${o ? h.ability : 'Summon this Stickfigure to reveal its ability.'}</div>
+      ${o ? evoInfo(h0, h) : ''}
       ${o ? `<div class="cd-stats">${st('HP', h.hp)}${h.attack === 'heal' ? st('Heal', h.heal) : st('DMG', h.dmg)}<span>Range<b>${h.range}</b></span><span>Speed<b>${h.speed}</b></span><span>Cost<b>${h.cost}</b></span><span>Cooldown<b>${h.cd}s</b></span></div>` : ''}
-      ${o ? `<div class="cd-lv">LEVEL <b>${lv}</b> / ${HERO_MAX_LV} <span>&middot; owned x${o.copies || 1}</span></div>` : `<div class="cd-lock">Not summoned yet. Find it on: <b>${banners.join(', ')}</b></div>`}
+      ${o ? '' : `<div class="cd-lock">Not summoned yet. Find it on: <b>${banners.join(', ')}</b></div>`}
       <div class="cd-btns"></div>`;
     detailCv = d.querySelector('canvas');
     if (!o) detailCv.classList.add('sil');
     const btns = d.querySelector('.cd-btns');
     if (o) {
-      const cost = Meta.heroUpCost(h, lv);
-      const up = U.el('button', 'btn btn-green', lv >= HERO_MAX_LV ? 'MAX LEVEL' : `Level up &middot; <i class="shard"></i>${cost}`);
-      up.disabled = lv >= HERO_MAX_LV || Save.d.shards < cost;
-      up.addEventListener('click', () => { if (Meta.upgradeHero(h.id)) { Sound.play('upgrade'); buildCollection(); achPopups(); } });
-      btns.appendChild(up);
+      const after = () => EvoUI.afterLevelUp(h0.id, buildCollection);
+      if (Evo.isEvolved(h0.id)) btns.appendChild(EvoUI.toggle(h0.id, buildCollection));
+      else if (lv >= HERO_MAX_LV) btns.appendChild(EvoUI.evolveBtn(h0.id, buildCollection));
+      else {
+        const cost = Meta.heroUpCost(h0, lv), xc = Meta.heroXpCost(h0, lv);
+        const up = U.el('button', 'btn btn-green', `Level up &middot; <i class="shard"></i>${cost}`);
+        up.disabled = Save.d.shards < cost;
+        up.addEventListener('click', () => { if (Meta.upgradeHero(h0.id)) { Sound.play('upgrade'); buildCollection(); after(); } });
+        btns.appendChild(up);
+        const tr = U.el('button', 'btn btn-teal', `Train &middot; ${U.fmt(xc)} XP`);
+        tr.disabled = Save.d.xp < xc;
+        tr.addEventListener('click', () => { if (Meta.upgradeHeroXP(h0.id)) { Sound.play('upgrade'); buildCollection(); after(); } });
+        btns.appendChild(tr);
+      }
       const slot = Meta.slotOf(h.id);
       if (slot >= 0) {
         const rm = U.el('button', 'btn btn-red', `Remove (slot ${(slot + 1) % 10})`);
@@ -791,6 +803,18 @@ const MetaUI = (() => {
       btns.appendChild(go);
     }
   }
+  /** Evolution status block for the Collection detail panel. */
+  function evoInfo(h0, form) {
+    const ev = Evo.def(h0.id), mv = ev.evoMove;
+    const mvHtml = mv ? `<div class="cd-mv" style="--mc:${mv.color}"><b>NEW MOVE</b> ${mv.desc}</div>` : '';
+    if (Evo.isEvolved(h0.id)) {
+      return `<div class="cd-evo on"><div class="ce-head">&#10022; EVOLVED <small>${form.evolved ? 'Evo form active' : 'Normal form active'}</small></div>
+        <div class="ce-list"><b>${ev.name}</b>: ${Evo.changes(h0.id).join(' &middot; ')}</div>${mvHtml}</div>`;
+    }
+    const lv = Save.d.heroes[h0.id].lv;
+    return `<div class="cd-evo"><div class="ce-head">&#10022; EVOLUTION <small>${lv >= EVO_LV ? 'Ready!' : `at Lv ${EVO_LV}`}</small><span class="ce-bar"><i style="width:${Math.min(100, (lv / EVO_LV) * 100)}%"></i></span></div>
+      <div class="ce-list">Becomes <b>${ev.name}</b>: ${Evo.changes(h0.id).join(' &middot; ')}${mv ? ' &middot; <b>learns a new move!</b>' : ''}</div></div>`;
+  }
   function renderSquad() {
     const wrap = $('#squad-slots'); wrap.innerHTML = '';
     $('#squad-bar').classList.toggle('picking', pickMode);
@@ -799,8 +823,9 @@ const MetaUI = (() => {
       const h = HERO_BY_ID[id], def = h || UNIT_BY_ID[id];
       const locked = !h && !Progress.isUnitUnlocked(def);
       const el = U.el('button', `sq-slot${h ? ' hero r-' + h.rarity : ''}${locked ? ' locked' : ''}`);
-      el.innerHTML = `<span class="sq-key">${(i + 1) % 10}</span><canvas></canvas><div class="sq-name">${locked ? '???' : def.short}</div>`;
-      Stick.renderIcon(el.querySelector('canvas'), def, 0, { w: 76, h: 56, scale: 0.85 });
+      const form = locked ? def : Evo.formDef(id);
+      el.innerHTML = `<span class="sq-key">${(i + 1) % 10}</span>${EvoUI.badge(form)}<canvas></canvas><div class="sq-name">${locked ? '???' : form.short}</div>`;
+      Stick.renderIcon(el.querySelector('canvas'), form, 0, { w: 76, h: 56, scale: 0.85 });
       el.addEventListener('click', () => {
         if (pickMode) {
           if (Meta.equip(colSel, i)) { Sound.play('summon', 0); pickMode = false; buildCollection(); }
@@ -833,15 +858,15 @@ const MetaUI = (() => {
     if (anim) tickAnim(dt, t);
     if (Game.screen === 'summon' && !anim) tickSummon(t, dt);
     if (Game.screen === 'collection' && detailCv && !anim) {
-      const h = HERO_BY_ID[colSel];
-      const ctx = fitCanvas(detailCv, 440, 200);
-      ctx.clearRect(0, 0, 440, 200);
+      const h = Save.d.heroes[colSel] ? Evo.formDef(colSel) : HERO_BY_ID[colSel];
+      const ctx = fitCanvas(detailCv, 440, 140);
+      ctx.clearRect(0, 0, 440, 140);
       const R = rar(h);
-      const g = ctx.createRadialGradient(220, 170, 10, 220, 140, 240);
+      const g = ctx.createRadialGradient(220, 120, 10, 220, 100, 210);
       g.addColorStop(0, R.glow); g.addColorStop(1, R.color + '00');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 440, 200);
-      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(220, 182, 70, 12, 0, 0, TAU); ctx.fill();
-      Stick.drawPreview(ctx, h, 0, 210, 182, previewScale(h, 2.2), t, Save.d.heroes[h.id] ? 'anim' : 'idle');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 440, 140);
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(220, 130, 60, 10, 0, 0, TAU); ctx.fill();
+      Stick.drawPreview(ctx, h, 0, 210, 130, previewScale(h, 1.62), t, Save.d.heroes[h.id] ? 'anim' : 'idle');
     }
   }
   function init() {

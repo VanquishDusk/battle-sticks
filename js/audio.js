@@ -134,6 +134,16 @@ const Sound = (() => {
       tone(65, 1.2, { vol: 0.5, slide: 40 }); noise(1, { vol: 0.4, type: 'lowpass', freq: 2500, slide: 80 });
     },
     unlock() { notes([[659, 0.1, 0], [784, 0.1, 0.08], [988, 0.1, 0.16], [1318, 0.4, 0.24]], { type: 'square', vol: 0.07 }); },
+    evoCharge() {
+      tone(140, 2.7, { type: 'sawtooth', vol: 0.07, slide: 1100, attack: 1.2 });
+      tone(280, 2.7, { type: 'triangle', vol: 0.06, slide: 2200, attack: 1.4 });
+      noise(2.6, { vol: 0.12, freq: 900, slide: 6000, q: 2, attack: 1.6 });
+    },
+    evolve() {
+      noise(1.2, { vol: 0.5, type: 'lowpass', freq: 3000, slide: 90 }); tone(70, 1.3, { vol: 0.5, slide: 40 });
+      notes([[523, 0.16, 0.1], [659, 0.16, 0.22], [784, 0.16, 0.34], [1046, 0.6, 0.46]], { type: 'square', vol: 0.09 });
+      notes([[1318, 0.6, 0.5], [1568, 0.7, 0.62], [2093, 0.9, 0.74]], { vol: 0.05 });
+    },
   };
 
   function play(name, minGap = 0.035) {

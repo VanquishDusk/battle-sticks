@@ -237,5 +237,8 @@ const ACHIEVEMENTS = [
   { id: 'zodiac6', name: 'Star Chart', text: 'Own 6 Zodiac Stickfigures', goal: 6, reward: 300, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && HERO_BY_ID[id].zodiac).length },
   { id: 'zodiac12', name: 'Full Zodiac', text: 'Own all 12 Zodiac Stickfigures', goal: 12, reward: 1500, progress: s => Object.keys(s.heroes).filter(id => HERO_BY_ID[id] && HERO_BY_ID[id].zodiac).length },
   { id: 'herolv5', name: 'Power Up', text: 'Raise a Stickfigure to level 5', goal: 5, reward: 150, progress: s => Math.max(0, ...Object.values(s.heroes).map(h => h.lv)) },
+  { id: 'evo1', name: 'Evolution!', text: 'Evolve a stickman at level 10', goal: 1, reward: 200, progress: s => Object.keys(s.evolved || {}).length },
+  { id: 'evo10', name: 'Next Generation', text: 'Evolve 10 different stickmen', goal: 10, reward: 500, progress: s => Object.keys(s.evolved || {}).length },
+  { id: 'evoUR', name: 'Ascended Legend', text: 'Evolve an Ultra Rare or Purity', goal: 1, reward: 400, progress: s => Object.keys(s.evolved || {}).filter(id => HERO_BY_ID[id] && RARITY[HERO_BY_ID[id].rarity].idx >= 3).length },
   { id: 'endless15', name: 'Endless Endurance', text: 'Survive 15 Endless waves', goal: 15, reward: 250, progress: s => s.endlessBest || 0 },
 ];

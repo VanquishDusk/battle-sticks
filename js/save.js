@@ -38,6 +38,14 @@ const Progress = {
   unitLv(id) { return Save.d.unitLv[id] || 1; },
   unitMult(lv) { return 1 + 0.15 * (lv - 1); },
   unitUpCost(def, lv) { return Math.round(def.xp * Math.pow(lv, 1.35)); },
+  /** Spend XP to level up a regular unit. */
+  levelUpUnit(id) {
+    const def = UNIT_BY_ID[id], lv = Progress.unitLv(id), cost = Progress.unitUpCost(def, lv);
+    if (!def || !Progress.isUnitUnlocked(def) || lv >= UNIT_MAX_LV || Save.d.xp < cost) return false;
+    Save.d.xp -= cost; Save.d.unitLv[id] = lv + 1;
+    Meta.track('upgrades'); Save.save();
+    return true;
+  },
   /** The level that unlocks a given unit (or null for starters). */
   unlockLevelOf(def) { return def.unlock ? LEVELS[def.unlock - 1] : null; },
 
@@ -71,9 +79,9 @@ const Progress = {
   roster() {
     return Meta.squad().map(id => {
       const h = HERO_BY_ID[id];
-      if (h) { const lv = Save.d.heroes[id].lv; return { def: h, lv, mult: Meta.heroMult(lv), unlocked: true }; }
+      if (h) { const lv = Save.d.heroes[id].lv; return { def: Evo.formDef(id), lv, mult: Meta.heroMult(lv), unlocked: true }; }
       const def = UNIT_BY_ID[id];
-      return { def, lv: Progress.unitLv(id), unlocked: Progress.isUnitUnlocked(def) };
+      return { def: Progress.isUnitUnlocked(def) ? Evo.formDef(id) : def, lv: Progress.unitLv(id), unlocked: Progress.isUnitUnlocked(def) };
     });
   },
 

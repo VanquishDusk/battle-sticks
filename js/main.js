@@ -68,5 +68,6 @@ const Game = {
   window.addEventListener('orientationchange', () => setTimeout(resize, 200));
   UI.init();
   MetaUI.init();
+  EvoUI.init();
   requestAnimationFrame(t => { last = t; frame(t); });
 })();

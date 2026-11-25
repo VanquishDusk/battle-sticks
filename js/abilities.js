@@ -315,8 +315,314 @@
     hurt(b, u, amt, src) {
       const a = src.unit;
       if (!a || !a.alive || a.team === u.team || Math.abs(a.x - u.x) > 110) return;
-      b.damage(a, amt * 0.4, { team: u.team, reflect: true, unit: u });
+      b.damage(a, amt * (u.def.reflect || 0.4), { team: u.team, reflect: true, unit: u });
       for (let i = 0; i < 3; i++) b.part({ type: 'spark', x: a.x, y: a.y - 30 * a.s, vx: U.rand(-80, 80), vy: U.rand(-80, 20), life: 0.3, size: 2.5, color: '#4ade80' });
+    },
+  };
+})();
+
+/* =========================================================
+   Evo moves: new attacks learned by evolved Ultra Rare and
+   Purity Stickfigures. Parameters come from def.evoMove
+   (defaults in evo.js). They run before the unit's base
+   ability, so a unit keeps its whole original kit.
+   ========================================================= */
+(() => {
+  const mv = u => u.def.evoMove;
+  const foes = (b, u) => b.team[1 - u.team];
+  const enemyBase = (b, u) => (u.team === 0 ? b.eBase : b.pBase);
+  const label = (b, u, m) => b.text(u.x, u.y - 94 * u.s, m.name.toUpperCase(), m.color, 15, 0.9);
+  const counted = (u, m) => { u.evoHits = (u.evoHits || 0) + 1; return u.evoHits % m.every === 0; };
+  const burst = (b, x, y, n, col, spd) => { for (let i = 0; i < n; i++) { const a = Math.random() * TAU, v = U.rand(60, spd || 220); b.part({ type: 'star', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: U.rand(0.4, 0.8), size: U.rand(2.5, 5), color: col }); } };
+  const ahead = (b, u, max) => { let best = null, bd = max; for (const o of foes(b, u)) { const d = (o.x - u.x) * u.dir; if (o.alive && d > -20 && d < bd) { bd = d; best = o; } } return best; };
+  const src = (u, extra) => Object.assign({ team: u.team, unit: u, evo: true }, extra || {});
+
+  // Burst around the unit every few attacks.
+  EvoFX.nova = {
+    attack(b, u) {
+      const m = mv(u);
+      if (!counted(u, m)) return false;
+      const dmg = b.movePower(u, m) * m.mult;
+      for (const o of foes(b, u)) if (o.alive && Math.abs(o.x - u.x) <= m.r) b.damage(o, dmg, src(u, { kbForce: m.kb && !o.def.boss }));
+      const base = enemyBase(b, u);
+      if (!base.destroyed && Math.abs(base.front - u.x) <= m.r) b.damage(base, dmg, src(u));
+      b.part({ type: 'flash', x: u.x, y: u.y - 30 * u.s, life: 0.35, size: m.r, color: m.color });
+      b.part({ type: 'ring', x: u.x, y: u.y - 4, life: 0.5, size: m.r, color: m.color, flat: true });
+      b.ring(u.x, u.y - 30 * u.s, m.color, m.r * 0.9);
+      burst(b, u.x, u.y - 35 * u.s, 16, m.color, 300);
+      label(b, u, m); b.addShake(5); b.sfx('explode', 0.15);
+      return false;
+    },
+  };
+
+  // Hits arc to nearby enemies.
+  EvoFX.chain = {
+    hit(b, u, t, amt, s) {
+      if (s.chain || s.evo || t.isBase) return;
+      const m = mv(u), hitIds = new Set([t.id]);
+      let from = t;
+      for (let j = 0; j < m.jumps; j++) {
+        let best = null, bd = m.range;
+        for (const o of foes(b, u)) { if (!o.alive || hitIds.has(o.id)) continue; const d = Math.abs(o.x - from.x); if (d < bd) { bd = d; best = o; } }
+        if (!best) break;
+        hitIds.add(best.id);
+        b.arc(from.x, from.y - 30 * from.s, best.x, best.y - 30 * best.s, m.color);
+        b.damage(best, amt * m.frac, src(u, { chain: true }));
+        if (m.erase && best.alive && !best.def.boss && best.hp / best.maxHp < (u.def.execute || 0.2)) b.erase(best, src(u));
+        from = best;
+      }
+      if (hitIds.size > 1) b.sfx('magic', 0.12);
+    },
+  };
+
+  // Strike from the sky on the enemy front.
+  EvoFX.meteor = {
+    spawn(b, u) { u.evoT = 2.5; },
+    update(b, u, dt) {
+      const m = mv(u);
+      u.evoT -= dt;
+      if (u.evoT > 0) return;
+      const tgt = ahead(b, u, 520);
+      if (!tgt) { u.evoT = 0.5; return; }
+      u.evoT = m.cd;
+      const tx = tgt.x, x0 = tx - u.dir * 170, dmg = b.movePower(u, m) * m.mult, team = u.team;
+      label(b, u, m);
+      b.addCustom({ x: x0, y: -40, color: m.color, T: 0.6,
+        step(bb, p) {
+          const k = Math.min(1, p.t / p.T);
+          p.x = U.lerp(x0, tx, k); p.y = U.lerp(-40, GROUND_Y + 6, k * k);
+          if (Math.random() < 0.8) bb.part({ type: 'fire', x: p.x, y: p.y, vx: U.rand(-30, 30), vy: -40, life: 0.35, size: U.rand(4, 8), color: m.color });
+          if (k < 1) return;
+          p.done = true;
+          for (const o of bb.team[1 - team]) if (o.alive && Math.abs(o.x - tx) <= m.r) bb.damage(o, dmg, { team, unit: u, evo: true, kbForce: m.kb && !o.def.boss });
+          const base = team === 0 ? bb.eBase : bb.pBase;
+          if (!base.destroyed && Math.abs(base.front - tx) <= m.r) bb.damage(base, dmg, { team, unit: u });
+          bb.part({ type: 'flash', x: tx, y: GROUND_Y - 10, life: 0.4, size: m.r * 1.3, color: m.color });
+          bb.part({ type: 'ring', x: tx, y: GROUND_Y + 10, life: 0.5, size: m.r, color: m.color, flat: true });
+          bb.shockwave(tx, GROUND_Y + 10, 1.4);
+          bb.addShake(8); bb.sfx('explode', 0.1);
+        },
+        drawFn(ctx, p, t) {
+          ctx.save();
+          const ang = Math.atan2(GROUND_Y - (-40), (tx - x0));
+          ctx.translate(p.x, p.y); ctx.rotate(ang);
+          ZArt.glow(ctx, 0, 0, 34, p.color, 0.8);
+          ctx.fillStyle = p.color; ctx.globalAlpha = 0.6;
+          ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(-70, 0); ctx.lineTo(0, 11); ctx.closePath(); ctx.fill();
+          ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, TAU); ctx.fill();
+          ctx.strokeStyle = p.color; ctx.lineWidth = 3; ctx.stroke();
+          ctx.restore();
+        },
+      });
+    },
+  };
+
+  // A volley of homing projectiles every few attacks.
+  EvoFX.barrage = {
+    attack(b, u) {
+      const m = mv(u);
+      if (!counted(u, m)) return false;
+      const list = foes(b, u).filter(o => o.alive && (o.x - u.x) * u.dir > -20 && (o.x - u.x) * u.dir <= Math.max(u.def.range || 0, 200) + 80);
+      if (!list.length) return false;
+      for (let k = 0; k < m.n; k++) {
+        const p = b.launch(u, list[k % list.length], 'star');
+        p.dmg = b.movePower(u, m) * m.frac; p.tint = m.color; p.src = src(u);
+        p.x += U.rand(-10, 10); p.y -= k * 7; p.speed += k * 25;
+      }
+      label(b, u, m); b.sfx('magic', 0.1);
+      return false;
+    },
+  };
+
+  // A ground shockwave that travels along the lane.
+  EvoFX.shockwave = {
+    attack(b, u) {
+      const m = mv(u);
+      if (!counted(u, m)) return false;
+      const dmg = b.movePower(u, m) * m.mult;
+      b.launchLinear(u, 'quake', {
+        y: GROUND_Y + 14, speed: m.speed, maxDist: m.dist, dmg, color: m.color, style: m.style,
+        onHit: (bb, p, o) => bb.damage(o, p.dmg, src(u, { kbForce: m.kb && !o.def.boss })),
+        onBase: (bb, p, base) => bb.damage(base, p.dmg, src(u)),
+        trailFx: (bb, p) => bb.part({ type: m.style === 'water' ? 'smoke' : 'debris', x: p.x - p.dir * 10, y: p.y - U.rand(0, 20), vx: -p.dir * U.rand(20, 80), vy: U.rand(-160, -40), g: 700, life: 0.5, size: U.rand(2, 5), color: m.color, rot: 0, vr: 6 }),
+      });
+      label(b, u, m); b.sfx(m.style === 'water' ? 'tide' : 'heavy', 0.15);
+      return false;
+    },
+  };
+
+  // A spectral copy of the unit.
+  const cloneDefs = new Map();
+  const cloneDefOf = (def, m) => {
+    if (!cloneDefs.has(def)) cloneDefs.set(def, Object.assign({}, def, { evoMove: null, fx: m.keepFx ? def.fx : null, name: def.name + ' (Echo)',
+      look: Object.assign({}, def.look, { ink: m.color, under: (def.look.under || []).filter(n => n !== 'twinGhost'), over: (def.look.over || []).filter(n => n !== 'evoCrest') }) }));
+    return cloneDefs.get(def);
+  };
+  EvoFX.clone = {
+    spawn(b, u) { u.evoT = 3; },
+    update(b, u, dt) {
+      const m = mv(u);
+      u.evoT -= dt;
+      if (u.evoT > 0 || (u.clone && u.clone.alive)) return;
+      if (!foes(b, u).some(o => o.alive && Math.abs(o.x - u.x) < 500)) { u.evoT = 0.5; return; }
+      u.evoT = m.cd;
+      const c = b.spawnUnit(cloneDefOf(u.def, m), u.team, u.mult, { x: u.x - u.dir * 18, life: m.life, lane: U.clamp(u.lane + (u.lane > 0.5 ? -0.3 : 0.3), 0, 1) });
+      c.maxHp = c.hp = u.maxHp * m.hp; c.dmg = u.dmg * m.dmg; c.spectral = true;
+      u.clone = c;
+      burst(b, c.x, c.y - 35, 14, m.color); label(b, u, m); b.sfx('dream', 0.2);
+    },
+  };
+
+  // Orbiting shards that hurt nearby enemies.
+  EvoFX.orbit = {
+    update(b, u, dt) {
+      const m = mv(u);
+      u.evoT = (u.evoT || 0) - dt;
+      if (u.evoT > 0) return;
+      u.evoT = m.tick;
+      const dmg = b.movePower(u, m) * m.frac;
+      for (const o of foes(b, u)) if (o.alive && Math.abs(o.x - u.x) <= m.r) { b.damage(o, dmg, src(u)); b.spark(o.x, o.y - 30 * o.s, m.color, 3); }
+    },
+    draw(b, ctx, u, t, layer) {
+      const m = mv(u), cy = u.y - 32 * u.s;
+      for (let i = 0; i < m.n; i++) {
+        const a = t * 2.6 + (i * TAU) / m.n, depth = Math.sin(a);
+        if ((layer === 'under') !== (depth < 0)) continue;
+        const x = u.x + Math.cos(a) * m.r * 0.8, y = cy + depth * 9;
+        ctx.save(); ctx.globalAlpha = depth < 0 ? 0.6 : 1;
+        ZArt.glow(ctx, x, y, 14, m.color, 0.7);
+        if (m.shape === 'moon') { ctx.fillStyle = m.color; ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.fill(); ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.arc(x + 3, y - 2, 5, 0, TAU); ctx.fill(); }
+        else if (m.shape === 'lantern') { ctx.fillStyle = '#7c2d12'; ctx.fillRect(x - 1, y - 9, 2, 3); ctx.fillStyle = m.color; ctx.beginPath(); ctx.ellipse(x, y, 5, 6.5, 0, 0, TAU); ctx.fill(); ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 1; ctx.stroke(); }
+        else { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill(); }
+        ctx.restore();
+      }
+    },
+  };
+
+  // Teleport to the deepest enemy in range and strike it.
+  EvoFX.blink = {
+    spawn(b, u) { u.evoT = 3; },
+    update(b, u, dt) {
+      const m = mv(u);
+      u.evoT -= dt;
+      if (u.evoT > 0) return;
+      let far = null, fd = 70;
+      for (const o of foes(b, u)) { const d = (o.x - u.x) * u.dir; if (o.alive && d > fd && d <= m.range) { fd = d; far = o; } }
+      if (!far) { u.evoT = 0.5; return; }
+      u.evoT = m.cd;
+      b.puff(u.x, u.y - 30, m.color, 10);
+      u.x = far.x - u.dir * 24; b.clampUnit(u); u.state = 'idle'; u.atkCd = Math.min(u.atkCd, 0.2);
+      b.puff(u.x, u.y - 30, m.color, 10);
+      b.damage(far, b.movePower(u, m) * m.mult, src(u, { stun: 0.5 }));
+      b.slashFx(far.x, far.y - 34 * far.s, u.dir, 1.4);
+      label(b, u, m); b.sfx('slash', 0.1);
+    },
+  };
+
+  // Rain of attacks over an area.
+  EvoFX.rain = {
+    spawn(b, u) { u.evoT = 2.5; },
+    update(b, u, dt) {
+      const m = mv(u);
+      u.evoT -= dt;
+      if (u.evoT > 0) return;
+      const tgt = ahead(b, u, 560);
+      if (!tgt) { u.evoT = 0.5; return; }
+      u.evoT = m.cd;
+      const cx = tgt.x + u.dir * 20, dmg = b.movePower(u, m) * m.frac, team = u.team;
+      label(b, u, m); b.sfx('arrow', 0.1);
+      b.addCustom({ x: cx, color: m.color, tickT: 0,
+        step(bb, p, dt2) {
+          p.tickT -= dt2;
+          if (p.tickT <= 0) {
+            p.tickT = m.tick;
+            for (const o of bb.team[1 - team]) if (o.alive && Math.abs(o.x - cx) <= m.r) bb.damage(o, dmg, { team, unit: u, evo: true });
+            bb.sfx('arrow', 0.08);
+          }
+          if (p.t >= m.dur) p.done = true;
+        },
+        drawFn(ctx, p, t) {
+          ctx.save();
+          ctx.globalAlpha = 0.25; ctx.fillStyle = p.color; ctx.beginPath(); ctx.ellipse(cx, GROUND_Y + 12, m.r, 12, 0, 0, TAU); ctx.fill();
+          ctx.globalAlpha = 1; ctx.strokeStyle = p.color; ctx.lineWidth = 2.5;
+          for (let i = 0; i < 14; i++) {
+            const x = cx - m.r + ((i * 37) % (m.r * 2)), y = GROUND_Y - 240 + ((t * 650 + i * 61) % 250);
+            ctx.beginPath(); ctx.moveTo(x + 6, y - 22); ctx.lineTo(x, y); ctx.stroke();
+            ZArt.star4(ctx, x, y, 3, '#ffffff');
+          }
+          ctx.restore();
+        },
+      });
+    },
+  };
+
+  // A zone that heals allies and hurts enemies.
+  EvoFX.sanctuary = {
+    spawn(b, u) { u.evoT = 2.5; },
+    update(b, u, dt) {
+      const m = mv(u);
+      u.evoT -= dt;
+      if (u.evoT > 0) return;
+      if (!foes(b, u).some(o => o.alive && Math.abs(o.x - u.x) < 450)) { u.evoT = 0.5; return; }
+      u.evoT = m.cd;
+      const cx = u.x + u.dir * 40, dmg = b.movePower(u, m) * m.frac, team = u.team;
+      label(b, u, m); b.sfx('heal', 0.2);
+      b.addCustom({ x: cx, color: m.color, tickT: 0, under: true,
+        step(bb, p, dt2) {
+          p.tickT -= dt2;
+          if (p.tickT <= 0) {
+            p.tickT = m.tick;
+            for (const o of bb.team[team]) if (o.alive && !o.def.structure && Math.abs(o.x - cx) <= m.r && o.hp < o.maxHp) {
+              o.hp = Math.min(o.maxHp, o.hp + o.maxHp * m.heal);
+              bb.part({ type: 'plus', x: o.x + U.rand(-8, 8), y: o.y - U.rand(20, 50) * o.s, vx: 0, vy: -40, life: 0.8, size: 4, color: p.color });
+            }
+            for (const o of bb.team[1 - team]) if (o.alive && Math.abs(o.x - cx) <= m.r) bb.damage(o, dmg, { team, unit: u, evo: true });
+          }
+          if (p.t >= m.dur) p.done = true;
+        },
+        drawFn(ctx, p, t) {
+          const fade = Math.min(1, p.t / 0.3, (m.dur - p.t) / 0.5);
+          ctx.save(); ctx.globalAlpha = 0.28 * fade; ctx.fillStyle = p.color;
+          ctx.beginPath(); ctx.ellipse(cx, GROUND_Y + 12, m.r, 16, 0, 0, TAU); ctx.fill();
+          ctx.globalAlpha = 0.9 * fade; ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.stroke();
+          for (let i = 0; i < 9; i++) {
+            const a = t * 0.8 + (i / 9) * TAU, x = cx + Math.cos(a) * m.r * 0.8, y = GROUND_Y + 12 + Math.sin(a) * 12;
+            ctx.save(); ctx.translate(x, y);
+            for (let k = 0; k < 5; k++) { ctx.rotate(TAU / 5); ctx.fillStyle = k % 2 ? '#ffffff' : p.color; ctx.beginPath(); ctx.ellipse(0, -3, 1.6, 3, 0, 0, TAU); ctx.fill(); }
+            ctx.restore();
+          }
+          ctx.restore();
+        },
+      });
+    },
+  };
+
+  // Rise again once per battle.
+  EvoFX.rebirth = {
+    death(b, u, s) {
+      const m = mv(u);
+      if (u.reborn || b.state !== 'play' || !s || s.team === -1) return;
+      const r = b.spawnUnit(u.def, u.team, u.mult, { x: u.x, lane: u.lane });
+      r.reborn = true; r.hp = r.maxHp * m.hp; r.atkCd = 0.6;
+      burst(b, r.x, r.y - 40, 22, m.color, 260);
+      b.part({ type: 'flash', x: r.x, y: r.y - 40, life: 0.4, size: 70, color: m.color });
+      b.part({ type: 'ring', x: r.x, y: r.y - 4, life: 0.6, size: 90, color: m.color, flat: true });
+      b.text(r.x, r.y - 96 * r.s, m.name.toUpperCase() + '!', m.color, 18, 1.1);
+      b.sfx('unlock', 0.2);
+    },
+  };
+
+  // Emergency shield the first time health drops low.
+  EvoFX.fortify = {
+    hurt(b, u) {
+      const m = mv(u);
+      if (u.fortified || u.hp / u.maxHp >= m.below) return;
+      u.fortified = true;
+      u.shieldHp = Math.max(u.shieldHp, u.maxHp * m.shield); u.shieldT = 12;
+      u.barrierT = Math.max(u.barrierT, m.barrier);
+      b.part({ type: 'ring', x: u.x, y: u.y - 4, life: 0.7, size: 110, color: m.color, flat: true });
+      burst(b, u.x, u.y - 50 * u.s, 18, m.color);
+      label(b, u, m); b.sfx('shield', 0.2); b.addShake(4);
     },
   };
 })();

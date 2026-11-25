@@ -11,7 +11,9 @@ const BUFF = { dmg: 1.35, haste: 1.3, march: 1.15 }; // Rally Drummer aura
 /* Ability modules (see abilities.js). Hooks: spawn, update, act, attackStart,
    attack, hit, hurt, kill, death, draw(layer). */
 const UnitFX = {};
-const fxOf = u => (u.def.fx && UnitFX[u.def.fx]) || null;
+/* Evo moves (see abilities.js). A unit runs its Evo move module first, then its base ability. */
+const EvoFX = {};
+const fxList = u => u._fx || (u._fx = [u.def.evoMove && EvoFX[u.def.evoMove.type], u.def.fx && UnitFX[u.def.fx]].filter(Boolean));
 const DEATH_DUR = 0.9, KB_DIST = 64;
 const THUNDER_REACH = 1100;
 
@@ -202,8 +204,7 @@ class Battle {
     if (opts.lane != null) u.lane = opts.lane;
     u.y = this.unitY(u);
     this.units.push(u);
-    const fx = fxOf(u);
-    if (fx && fx.spawn) fx.spawn(this, u);
+    this.callFx(u, 'spawn');
     if (def.boss && team === 1) {
       this.boss = u; this.bossSpawned = true;
       this.emit('boss', { name: def.name });
@@ -469,8 +470,8 @@ class Battle {
     }
     if (u.frozenT > 0) u.frozenT -= dt;
     if (u.stunT > 0) { u.stunT -= dt; if (u.state === 'attack' || u.state === 'walk') u.state = 'idle'; return; }
-    const fx = fxOf(u);
-    if (fx && fx.update) { fx.update(this, u, dt); if (!u.alive) return; }
+    const mods = fxList(u);
+    for (const m of mods) if (m.update) { m.update(this, u, dt); if (!u.alive) return; }
 
     if (d.healPulse) {
       u.healT -= dt;
@@ -509,10 +510,11 @@ class Battle {
       : d.attack === 'paint' ? (tgt && u.minions < d.minions.max ? tgt : null)
       : d.attack === 'build' ? (tgt && !(u.wall && u.wall.alive) ? tgt : null)
       : tgt;
-    const act2 = fx && fx.act ? fx.act(this, u, tgt) : act;
+    let act2 = act;
+    for (const m of mods) if (m.act) { act2 = m.act(this, u, tgt); break; }
     if (act2 && u.atkCd <= 0) {
       u.state = 'attack'; u.atkT = 0; u.hitDone = false; u.atkCd = d.rate;
-      if (fx && fx.attackStart) fx.attackStart(this, u);
+      this.callFx(u, 'attackStart');
       if (d.attack === 'explode') this.sfx('kb', 0.1);
     } else if (tgt) {
       u.state = 'idle';
@@ -537,8 +539,7 @@ class Battle {
     const d = u.def;
     const src = { team: u.team, kbChance: d.kbChance, crit: d.crit, slow: d.slow, unit: u };
     const dmg = this.dmgOf(u);
-    const fx = fxOf(u);
-    if (fx && fx.attack && fx.attack(this, u, src, dmg)) return;
+    if (this.callFx(u, 'attack', src, dmg)) return;
     switch (d.attack) {
       case 'melee': {
         const t = this.findTarget(u, d.range + 12);
@@ -597,6 +598,7 @@ class Battle {
         this.damage(t, dmg + t.maxHp * (t.def.boss ? 0.04 : d.pctDmg), src);
         for (let i = 0; i < 6; i++) this.part({ type: 'debris', x: t.x, y: t.y - 30 * t.s, vx: U.rand(-90, 90), vy: U.rand(-200, -60), g: 800, life: 0.6, size: U.rand(2, 4), color: '#f9a8d4', rot: 0, vr: U.rand(-8, 8) });
         if (t.alive && !t.def.boss && t.hp / t.maxHp < d.execute) this.erase(t, src);
+        else if (t.alive) this.callFx(u, 'eraseHit', t);
         break;
       }
       case 'chrono': {
@@ -682,9 +684,9 @@ class Battle {
     t.hp -= amt; t.flash = 0.1;
     this.spark(t.x - t.dir * 4 * t.s, t.y - 28 * t.s, t.team === 0 ? '#ffe7a0' : '#ffffff', 6);
     if (src.slow) { t.slowT = Math.max(t.slowT, src.slow); }
-    if (src.unit && !src.reflect) { const afx = fxOf(src.unit); if (afx && afx.hit) afx.hit(this, src.unit, t, amt, src); }
+    if (src.unit && !src.reflect) this.callFx(src.unit, 'hit', t, amt, src);
     if (t.hp <= 0) { this.kill(t, src); return; }
-    if (!src.reflect) { const tfx = fxOf(t); if (tfx && tfx.hurt) { tfx.hurt(this, t, amt, src); if (!t.alive) return; } }
+    if (!src.reflect) { this.callFx(t, 'hurt', amt, src); if (!t.alive) return; }
     if (d.structure) return;
     if (src.stun) t.stunT = Math.max(t.stunT, src.stun);
     const kb = d.kb || 1, kr = d.kbResist || 0;
@@ -728,8 +730,8 @@ class Battle {
   kill(u, src, noReward) {
     if (!u.alive) return;
     u.alive = false; u.state = 'dead'; u.deadT = 0; u.hp = 0;
-    if (src && src.unit && src.unit.alive) { const kfx = fxOf(src.unit); if (kfx && kfx.kill) kfx.kill(this, src.unit, u); }
-    { const dfx = fxOf(u); if (dfx && dfx.death) dfx.death(this, u); }
+    if (src && src.unit && src.unit.alive) this.callFx(src.unit, 'kill', u);
+    this.callFx(u, 'death', src);
     if (u.team === 1) {
       if (!noReward && !this.demo) {
         const g = Math.round(u.def.reward * this.mods.bounty * (this.endless ? 1 + this.waveIdx * 0.03 : 1));
@@ -781,6 +783,14 @@ class Battle {
     }
   }
   dmgOf(u) { return u.dmg * (u.buffT > 0 ? BUFF.dmg : 1) * (u.radT > 0 ? 1.25 : 1) * (u.weakT > 0 ? u.weakF : 1); }
+  /** Run a hook on every ability module of a unit; true if any module handled it. */
+  callFx(u, name, a, b, c) {
+    let r = false;
+    for (const m of fxList(u)) if (m[name]) r = m[name](this, u, a, b, c) || r;
+    return r;
+  }
+  /** Damage used by moves for units that normally deal none (healers, summoners). */
+  movePower(u, mv) { return this.dmgOf(u) || (mv.power || 30) * (u.mult || 1); }
   moveMult(u) {
     return (u.slowT > 0 ? 0.5 : 1) * (u.buffT > 0 ? BUFF.march : 1) * (u.hasteT > 0 ? 1.3 : 1) * (u.weakT > 0 ? u.weakF : 1) * (u.gravT > 0 ? u.gravF : 1);
   }
@@ -835,7 +845,10 @@ class Battle {
       p.T = T; p.g = cfg.g; p.vx = (tx - sx) / T; p.vy = (ty - sy - 0.5 * cfg.g * T * T) / T; p.tx = tx;
     }
     this.projs.push(p);
+    return p;
   }
+  /** Free-form projectile / zone: p.step(b,p,dt) moves it, p.drawFn(ctx,p,t) draws it, set p.done to finish. */
+  addCustom(p) { p.custom = true; p.t = 0; p.done = false; this.projs.push(p); return p; }
   /** A projectile that flies straight along the lane and touches every foe it passes once. */
   launchLinear(u, kind, o) {
     const p = Object.assign({ kind, team: u.team, linear: true, x: u.x + u.dir * 14 * u.s, y: u.y - 38 * u.s, dir: u.dir, travelled: 0, hitIds: new Set(),
@@ -864,6 +877,7 @@ class Battle {
   updateProj(p, dt) {
     if (p.done) return;
     p.t += dt;
+    if (p.custom) { p.step(this, p, dt); return; }
     if (p.linear) { this.updateLinear(p, dt); return; }
     if (p.homing) {
       const tg = p.target;
@@ -991,6 +1005,13 @@ class Battle {
     this.part({ type: 'flash', x, y, life: 0.25, size: 50, color: '#fff7b0' });
     for (let i = 0; i < 8; i++) this.part({ type: 'spark', x, y, vx: U.rand(-200, 200), vy: U.rand(-260, -40), life: 0.4, size: 3, color: '#fff59d' });
   }
+  /** A short lightning arc between two points. */
+  arc(x1, y1, x2, y2, color) {
+    const pts = [[x1, y1]], n = 5;
+    for (let i = 1; i < n; i++) pts.push([U.lerp(x1, x2, i / n) + U.rand(-6, 6), U.lerp(y1, y2, i / n) + U.rand(-12, 12)]);
+    pts.push([x2, y2]);
+    this.bolts.push({ pts, t: 0, life: 0.25, color, thin: true });
+  }
   updateParts(dt) {
     for (const p of this.parts) {
       p.t += dt;
@@ -1061,7 +1082,8 @@ class Battle {
     for (const p of this.parts) if (p.type === 'stuck') this.drawPart(ctx, p);
 
     // ability effects behind units (fields, tethers)
-    for (const u of this.units) { const fx = fxOf(u); if (fx && fx.draw && u.alive) fx.draw(this, ctx, u, t, 'under'); }
+    for (const u of this.units) if (u.alive) for (const m of fxList(u)) if (m.draw) m.draw(this, ctx, u, t, 'under');
+    for (const p of this.projs) if (p.custom && p.under && p.drawFn) p.drawFn(ctx, p, t);
     // units sorted by depth
     const list = this.units.slice().sort((a, b) => a.y - b.y || (a.alive - b.alive));
     for (const u of list) {
@@ -1071,7 +1093,7 @@ class Battle {
       else Stick.drawUnit(ctx, u, t);
     }
     this.drawStatuses(ctx, list, cam, t);
-    for (const u of this.units) { const fx = fxOf(u); if (fx && fx.draw && u.alive) fx.draw(this, ctx, u, t, 'over'); }
+    for (const u of this.units) if (u.alive) for (const m of fxList(u)) if (m.draw) m.draw(this, ctx, u, t, 'over');
     // health bars
     for (const u of list) {
       if (!u.alive || u.hp >= u.maxHp || u === this.boss || u.x < cam - 50 || u.x > cam + VIEW_W + 50) continue;
@@ -1088,9 +1110,9 @@ class Battle {
     for (const b of this.bolts) {
       const a = 1 - b.t / b.life;
       ctx.globalAlpha = a;
-      ctx.strokeStyle = '#fff59d'; ctx.lineWidth = 10; ctx.lineJoin = 'miter';
+      ctx.strokeStyle = b.color || '#fff59d'; ctx.lineWidth = b.thin ? 5 : 10; ctx.lineJoin = 'miter';
       ctx.beginPath(); b.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = b.thin ? 1.8 : 4; ctx.stroke();
       ctx.lineJoin = 'round';
     }
     ctx.globalAlpha = 1;
@@ -1191,6 +1213,7 @@ class Battle {
     ctx.fillStyle = col; ctx.fillText(s, x, y);
   }
   drawProj(ctx, p, t) {
+    if (p.custom) { if (!p.under && p.drawFn) p.drawFn(ctx, p, t); return; }
     ctx.save(); ctx.translate(p.x, p.y);
     switch (p.kind) {
       case 'arrow':
@@ -1216,7 +1239,8 @@ class Battle {
       }
       case 'star': {
         ctx.rotate(p.t * 14);
-        ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.stroke();
+        if (p.tint) ZArt.glow(ctx, 0, 0, 14, p.tint, 0.7);
+        ctx.strokeStyle = p.tint || '#93c5fd'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.stroke();
         ZArt.star4(ctx, 0, 0, 4, '#eff6ff');
         break;
       }
@@ -1227,6 +1251,21 @@ class Battle {
         ctx.strokeStyle = col; ctx.lineWidth = big ? 4 : 2.6; ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len * 0.4, 0); ctx.stroke();
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
         ZArt.star4(ctx, len * 0.5, 0, big ? 7 : 5, '#ffffff');
+        break;
+      }
+      case 'quake': {
+        ctx.scale(p.dir, 1);
+        ZArt.glow(ctx, 0, -10, 40, p.color, 0.6);
+        if (p.style === 'rock') {
+          for (let i = 0; i < 5; i++) { const h = 30 - i * 5, x = -i * 13; ctx.fillStyle = i % 2 ? '#57534e' : '#78716c'; ctx.strokeStyle = '#2b2118'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 7, 6); ctx.lineTo(x, 6 - h); ctx.lineTo(x + 7, 6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.strokeStyle = p.color; ctx.beginPath(); ctx.moveTo(x - 2, 4 - h * 0.5); ctx.lineTo(x, 6 - h); ctx.stroke(); }
+        } else if (p.style === 'water') {
+          ctx.fillStyle = p.color; ctx.globalAlpha = 0.8;
+          ctx.beginPath(); ctx.moveTo(-34, 8); ctx.quadraticCurveTo(-20, -14, 0, -34); ctx.quadraticCurveTo(16, -40, 18, -24); ctx.quadraticCurveTo(8, -26, 8, -14); ctx.quadraticCurveTo(10, 0, 14, 8); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+        } else {
+          ctx.strokeStyle = p.color; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(-14, -10, 22, -1.1, 1.1); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+        }
         break;
       }
       case 'wave': {
