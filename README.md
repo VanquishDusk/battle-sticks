@@ -38,7 +38,38 @@ Progress is saved automatically in `localStorage`.
 
 **10 enemy types**: Grunt, Runner, Slinger (ranged), Brute (tank), Boomer (suicide bomber), Hexer (heals allies), Dark Knight (armored), plus three bosses: Warlord, Titan and the summoning Shadow King.
 
-**12 levels** across 4 regions (Meadowlands, Sunscorch Desert, Frostpeak, Ashen Wastes) with new enemies introduced as you go, plus an **Endless Arena** (unlocked after level 6) with escalating waves and a saved best score.
+**Campaign 1: The Stick Wars**: 12 levels across 4 regions (Meadowlands, Sunscorch Desert, Frostpeak, Ashen Wastes) with new enemies introduced as you go, plus an **Endless Arena** (unlocked after level 6) with escalating waves and a saved best score.
+
+**Campaign 2: Beyond the Margin**: 12 more levels where every battle has a twist (see below). Unlocked by clearing Shadow Citadel; switch campaigns with the tabs on the world map.
+
+## Campaign 2: Beyond the Margin
+
+The second campaign is built around **gimmicks that need a plan**: enemy traits that shrug off the wrong kind of attack, and stage rules that change how a battle plays. Every level card has a **Battle Briefing** that explains the rules and traits, checks your current deck against them ("Anti-air 3 ✓", "Magic 0 ✗"), and has an **Edit Deck** shortcut. Unit cards show small tags for what each unit counters: ✈ anti-air, ✦ magic, ☀ light-bearer.
+
+**Enemy traits**
+
+| Trait | Enemies | What it means | Counter |
+| --- | --- | --- | --- |
+| Flying | Skywing, Storm Roc | Flies over your army; Skywings go straight for your tower | Ranged units (range 120+) and Lancers, which shoot flyers first |
+| Shielded | Phalanx | Tower shield blocks 90% of ranged damage | Melee units |
+| Burrower | Tunneler | Digs under your army, untouchable, and ambushes from behind | Keep reinforcements coming; Thunder digs them out |
+| Ethereal | Phantom, Wraith Queen | Fades in and out; physical hits pass through while faded | Magic (Wizards, Comet, Tide, Libra, Lantern...) always hits |
+| Plated | Ironclad, Iron Tyrant | Plating soaks the first part of every hit | Heavy hitters, crits, poison and Thunder |
+| Splitter | Void Blot, The Blot | Splits into smaller copies when it dies | Area damage |
+
+**Stage rules**
+
+| Rule | Levels | Effect |
+| --- | --- | --- |
+| Gale Winds | 2-2, 2-3 | Gusts alternate direction: tailwinds speed your army, headwinds stall it and speed up the enemy (flyers are pushed around even more). The HUD counts down to the next gust. |
+| Darkness | 2-4 to 2-6 | Your stickmen only fight enemies inside the light around them. Light-bearers (Wizard, Lantern, Sol, Leo, Comet...) see farther; Thunder lights the whole field for 4 seconds. Enemies in the dark show only their glowing eyes. |
+| Shield Generators | 2-8, 2-9 | The fortress is invulnerable until both generators on the field are destroyed. |
+| Army Limit | 2-10 | Only 8 of your stickmen at once; summoned helpers don't count. |
+| Budget | 2-11 | Units costing more than 400 can't be summoned (they're marked OVER BUDGET). |
+
+**Regions and bosses**: Stormcoast (flyers and wind, boss **Storm Roc**: a flying boss whose Gale Dive blasts your army back), Gloomwood (darkness, Tunnelers and Phantoms, boss **Wraith Queen**: fades like her Phantoms and summons more), Ironworks (Ironclads and shield generators, boss **Iron Tyrant**: heavily plated, shells your army with a telegraphed cannon), The Rift (everything at once, final boss **The Blot**: sheds Void Blots and hides in an ink cocoon at 75/50/25% health, then bursts into Blotlings).
+
+Each region also has its own look: rain and lightning over the sea cliffs, a pitch-black haunted wood with fog and fireflies, smokestacks and embers in the foundry, and a purple void with floating shards and glitching particles. Three new achievements cover the campaign.
 
 ## Stick Tokens, Summons & Collection
 
@@ -121,6 +152,7 @@ Evolution data lives in `js/evo.js` (forms and move settings), the moves in `js/
 | `css/style.css` | UI styling (fixed 1280×720 stage scaled to fit) |
 | `js/util.js` | Math, seeded RNG, DOM helpers |
 | `js/data.js` | Units, enemies, levels, upgrades, wallet tables |
+| `js/campaign2.js` | Campaign 2: new enemies and bosses, regions, levels, stage rules, briefing text |
 | `js/zodiac-data.js` | The 12 zodiac signs (glyphs, constellations, seasons) and Zodiac Stickfigures |
 | `js/gacha-data.js` | Stickfigures, rarities, banners, daily rewards, quests, achievements |
 | `js/save.js` | Save data and progression helpers |
@@ -133,7 +165,9 @@ Evolution data lives in `js/evo.js` (forms and move settings), the moves in `js/
 | `js/audio.js` | Synthesized sound effects and music |
 | `js/stickman.js` | Stickman skeleton, poses, animations, weapons and accessories |
 | `js/scenery.js` | Themed parallax backgrounds, weather, bases, world map |
+| `js/c2-art.js` | Campaign 2 enemy gear, themes, decor and weather |
 | `js/battle.js` | Battle simulation: combat, projectiles, waves, economy, effects, rendering |
+| `js/gimmicks.js` | Enemy traits, stage rules, Campaign 2 bosses, darkness and wind rendering |
 | `js/ui.js` | Screens, HUD, input, tutorial, results |
 | `js/main.js` | Boot, resize and main loop |
 

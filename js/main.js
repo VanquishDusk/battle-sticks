@@ -48,7 +48,7 @@ const Game = {
         Game.battle.frame(dt);
         Game.battle.render(ctx, Game.res);
       } else if (Game.screen === 'map') {
-        Scenery.MapScene.render(ctx, Game.t, dt, Game.res, Progress.frontier());
+        Scenery.MapScene.render(ctx, Game.t, dt, Game.res, Progress.frontier(), Game.mapCamp || 1);
       } else {
         if (!Game.demo) Game.demo = makeDemo();
         Game.demo.frame(dt);

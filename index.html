@@ -151,6 +151,7 @@
             <div class="wavebar"><div id="wave-fill"></div></div>
           </div>
           <canvas id="minimap"></canvas>
+          <div id="rule-hud"></div>
         </div>
         <div class="hud-right">
           <div class="basebox enemy">
@@ -192,8 +193,9 @@
 
     <!-- ================= OVERLAYS ================= -->
     <div id="ov-level" class="overlay">
-      <div class="card level-card">
+      <div class="card level-card" id="level-card">
         <button class="close-x" data-close>&times;</button>
+        <div class="lc-main">
         <div class="lc-head">
           <div class="lc-num" id="lc-num">1</div>
           <div>
@@ -207,6 +209,8 @@
         <div class="lc-enemies" id="lc-enemies"></div>
         <div class="lc-info" id="lc-info"></div>
         <button class="btn btn-big btn-yellow" id="btn-go">BATTLE!</button>
+        </div>
+        <div class="lc-brief hidden" id="lc-brief"></div>
       </div>
     </div>
 
@@ -349,6 +353,7 @@
 
 <script src="js/util.js"></script>
 <script src="js/data.js"></script>
+<script src="js/campaign2.js"></script>
 <script src="js/zodiac-data.js"></script>
 <script src="js/gacha-data.js"></script>
 <script src="js/save.js"></script>
@@ -358,8 +363,10 @@
 <script src="js/zodiac-art.js"></script>
 <script src="js/evo.js"></script>
 <script src="js/scenery.js"></script>
+<script src="js/c2-art.js"></script>
 <script src="js/battle.js"></script>
 <script src="js/abilities.js"></script>
+<script src="js/gimmicks.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/gacha-ui.js"></script>
 <script src="js/evo-ui.js"></script>

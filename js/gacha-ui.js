@@ -762,7 +762,7 @@ const MetaUI = (() => {
     d.className = `r-${h.rarity}${h.evolved ? ' evo' : ''}`;
     d.innerHTML = `<div class="cd-art"><canvas></canvas><div class="cd-rar" style="background:${R.color}">${starStr(R.stars)} ${(R.single || R.name).toUpperCase()}</div>${h.zodiac ? `<div class="cd-lim zd">${ZArt.glyphSVG(h.zodiac, '#fde68a', 14)} ${ZODIAC_BY_ID[h.zodiac].name.toUpperCase()}</div>` : h.limited ? '<div class="cd-lim">LIMITED</div>' : ''}</div>
       <div class="cd-name">${o ? h.name + EvoUI.badge(h) + (h.title ? ` <small class="cd-title">${h.title}</small>` : '') : '??? ' + (R.single || R.name) + ' Stickfigure'}</div>
-      <div class="cd-role">${h.role} &middot; ${h.attack === 'heal' ? 'Healer' : h.range > 120 ? 'Ranged' : h.attack === 'area' ? 'Area melee' : 'Melee'}${o ? `<span class="cd-lv">LEVEL <b>${lv}</b> / ${HERO_MAX_LV} <span>&middot; owned x${o.copies || 1}</span></span>` : ''}</div>
+      <div class="cd-role">${h.role} &middot; ${h.attack === 'heal' ? 'Healer' : h.range > 120 ? 'Ranged' : h.attack === 'area' ? 'Area melee' : 'Melee'}${o ? unitTagsHtml(h) : ''}${o ? `<span class="cd-lv">LEVEL <b>${lv}</b> / ${HERO_MAX_LV} <span>&middot; owned x${o.copies || 1}</span></span>` : ''}</div>
       ${o ? `<div class="cd-desc" title="${h.desc.replace(/"/g, '&quot;')}">${h.desc}</div>` : ''}
       <div class="cd-ab"><b>ABILITY</b> ${o ? h.ability : 'Summon this Stickfigure to reveal its ability.'}</div>
       ${o ? evoInfo(h0, h) : ''}

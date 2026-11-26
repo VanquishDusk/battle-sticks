@@ -13,7 +13,10 @@ const BUFF = { dmg: 1.35, haste: 1.3, march: 1.15 }; // Rally Drummer aura
 const UnitFX = {};
 /* Evo moves (see abilities.js). A unit runs its Evo move module first, then its base ability. */
 const EvoFX = {};
-const fxList = u => u._fx || (u._fx = [u.def.evoMove && EvoFX[u.def.evoMove.type], u.def.fx && UnitFX[u.def.fx]].filter(Boolean));
+/* Enemy traits (see gimmicks.js), switched on by the matching key in a unit's definition. */
+const TraitFX = {};
+const TRAITS = ['fly', 'plate', 'guard', 'phase', 'burrow', 'split'];
+const fxList = u => u._fx || (u._fx = [u.def.evoMove && EvoFX[u.def.evoMove.type], u.def.fx && UnitFX[u.def.fx], ...TRAITS.map(k => u.def[k] && TraitFX[k])].filter(Boolean));
 const DEATH_DUR = 0.9, KB_DIST = 64;
 const THUNDER_REACH = 1100;
 
@@ -115,6 +118,8 @@ class Battle {
     this.weather = Scenery.makeWeather(this.theme.weather);
     this.demoT = 0.4; this.demoET = 1.2;
     this.lastDt = 0;
+    this.rules = level.rules || {};
+    if (!this.demo) this.initRules();
   }
 
   // ---------- helpers ----------
@@ -135,13 +140,16 @@ class Battle {
     if (this.state !== 'play') return 'wait';
     const r = this.rosterById[id];
     if (!r) return 'locked';
+    if (this.rules.costCap && r.def.cost > this.rules.costCap) return 'banned';
     if (this.cd[id] > 0) return 'cooldown';
+    if (this.rules.unitCap && this.armySize() >= this.rules.unitCap) return 'army';
     if (this.gold < r.def.cost) return 'gold';
     if (this.team[0].length >= UNIT_CAP) return 'cap';
     this.gold -= r.def.cost;
     this.stats.spent += r.def.cost;
     this.cd[id] = r.def.cd * this.mods.cdMult;
     const u = this.spawnUnit(r.def, 0, r.mult || Progress.unitMult(r.lv));
+    u.summoned = true;
     this.stats.summoned++;
     this.puff(u.x, u.y - 20, '#ffffff', 10);
     this.ring(u.x, u.y - 20, r.def.color, 30);
@@ -177,6 +185,7 @@ class Battle {
       for (let i = 0; i < 3; i++) this.bolt(Math.min(reach, front + 120 + i * 140 + Math.random() * 60), GROUND_Y + 10);
     }
     this.flash = 0.6; this.flashCol = '#fff8d0';
+    if (this.dark) this.darkLift = 4;
     this.addShake(14); this.hitstop = 0.06;
     this.sfx('thunder', 0.1);
     this.emit('banner', { text: 'THUNDER!', cls: 'gold', small: targets.length ? `${targets.length} enemies struck` : '' });
@@ -317,6 +326,7 @@ class Battle {
       } else this.demoAI(dt);
       this.updateWaves(dt);
     }
+    if (this.wind || this.dark) this.updateRules(dt);
 
     for (let i = 0; i < this.units.length; i++) this.updateUnit(this.units[i], dt);
     if (this.units.some(u => u.remove)) this.units = this.units.filter(u => !u.remove);
@@ -399,14 +409,16 @@ class Battle {
   // ---------- units ----------
   findTarget(u, range) {
     const foes = this.team[1 - u.team];
-    let best = null, bd = Infinity;
+    let best = null, bd = Infinity, air = null, ad = Infinity;
     for (let i = 0; i < foes.length; i++) {
       const o = foes[i];
-      if (!o.alive) continue;
+      if (!o.alive || !this.canTarget(u, o)) continue;
       const d = (o.x - u.x) * u.dir;
       if (d < -20 || d > range) continue;
       if (d < bd) { bd = d; best = o; }
+      if (o.fly && d < ad) { ad = d; air = o; }
     }
+    if (air) return air; // anti-air instinct: flyers first
     if (best) return best;
     const base = u.team === 0 ? this.eBase : this.pBase;
     if (!base.destroyed && (base.front - u.x) * u.dir <= range) return base;
@@ -415,7 +427,7 @@ class Battle {
   targetsInRange(u, range) {
     const out = [];
     for (const o of this.team[1 - u.team]) {
-      if (!o.alive) continue;
+      if (!o.alive || !this.canTarget(u, o)) continue;
       const d = (o.x - u.x) * u.dir;
       if (d >= -24 && d <= range) out.push(o);
     }
@@ -671,9 +683,12 @@ class Battle {
     if (t.isBase) return this.damageBase(t, amt);
     if (!t.alive) return;
     const d = t.def;
+    if (t.trait && this.traitBlock(t, src)) return;
     if (d.dodge && !src.thunder && !src.sure && Math.random() < d.dodge) { this.text(t.x, t.y - 70 * t.s, 'MISS', '#ffffff', 18, 0.7); return; }
-    if (src.crit && Math.random() < src.crit) { amt *= 2.2; this.text(t.x, t.y - 74 * t.s, 'CRIT!', '#ffd23f', 22, 0.8); }
+    let crit = false;
+    if (src.crit && Math.random() < src.crit) { crit = true; amt *= 2.2; this.text(t.x, t.y - 74 * t.s, 'CRIT!', '#ffd23f', 22, 0.8); }
     amt *= 1 - (d.armor || 0);
+    if (t.trait) amt = this.traitReduce(t, amt, src, crit);
     if (t.barrierT > 0) amt *= 0.6;
     if (t.shieldHp > 0) {
       const a = Math.min(t.shieldHp, amt);
@@ -701,6 +716,10 @@ class Battle {
     b.hitT = 0.15;
     for (let i = 0; i < 3; i++) this.part({ type: 'debris', x: b.front + U.rand(-10, 10), y: BASE_GY - U.rand(30, 180), vx: -b.team * 0 + (b.team === 0 ? U.rand(-60, 120) : U.rand(-120, 60)), vy: U.rand(-220, -60), g: 900, life: 0.9, size: U.rand(3, 6), color: b.team === 0 ? '#e6dccb' : '#4a3f4f', rot: Math.random() * 6, vr: U.rand(-10, 10) });
     if (b.invuln) return;
+    if (b.shielded) {
+      if (this.t - (b.noteT || -9) > 0.8) { b.noteT = this.t; this.text(b.front, BASE_GY - 160, 'SHIELDED', '#fde047', 18, 0.7); this.sfx('clang', 0.2); }
+      return;
+    }
     if (b.team === 1) this.stats.dmgDealt += Math.min(amt, b.hp);
     b.hp -= amt;
     this.sfx('basehit', 0.12);
@@ -765,8 +784,8 @@ class Battle {
     this.text(t.x, t.y - 80 * t.s, 'ERASED!', '#f472b6', 22, 0.9);
     for (let i = 0; i < 14; i++) this.part({ type: 'debris', x: t.x + U.rand(-10, 10), y: t.y - U.rand(10, 60) * t.s, vx: U.rand(-140, 140), vy: U.rand(-260, -60), g: 800, life: 0.8, size: U.rand(2, 5), color: i % 2 ? '#f9a8d4' : '#ffffff', rot: 0, vr: U.rand(-10, 10) });
     if (src.team === 0) this.stats.dmgDealt += Math.max(0, t.hp);
+    t.erased = true;
     this.kill(t, src);
-    if (!t.alive) t.erased = true;
   }
   /** Rally Drummer aura. */
   rallyPulse(u) {
@@ -792,7 +811,7 @@ class Battle {
   /** Damage used by moves for units that normally deal none (healers, summoners). */
   movePower(u, mv) { return this.dmgOf(u) || (mv.power || 30) * (u.mult || 1); }
   moveMult(u) {
-    return (u.slowT > 0 ? 0.5 : 1) * (u.buffT > 0 ? BUFF.march : 1) * (u.hasteT > 0 ? 1.3 : 1) * (u.weakT > 0 ? u.weakF : 1) * (u.gravT > 0 ? u.gravF : 1);
+    return (u.slowT > 0 ? 0.5 : 1) * (u.buffT > 0 ? BUFF.march : 1) * (u.hasteT > 0 ? 1.3 : 1) * (u.weakT > 0 ? u.weakF : 1) * (u.gravT > 0 ? u.gravF : 1) * (this.wind ? this.windMult(u) : 1);
   }
   /** Timers for shields, buffs and debuffs; poison damage; Purity shimmer. */
   tickStatus(u, dt) {
@@ -1054,15 +1073,16 @@ class Battle {
 
     Scenery.drawBase(ctx, this.pBase, t);
     Scenery.drawBase(ctx, this.eBase, t);
+    if (this.gens) this.drawRulesUnder(ctx, t);
 
     // shadows
     ctx.fillStyle = 'rgba(0,0,0,.16)';
     for (const u of this.units) {
       if (u.x < cam - 100 || u.x > cam + VIEW_W + 100) continue;
-      const a = u.alive ? 1 : Math.max(0, 1 - u.deadT / DEATH_DUR);
-      if (a <= 0) continue;
+      const a = (u.alive ? 1 : Math.max(0, 1 - u.deadT / DEATH_DUR)) * (u.fly ? 0.6 : 1) * (u.phased ? 0.4 : 1);
+      if (a <= 0 || u.burrowed) continue;
       ctx.globalAlpha = a;
-      ctx.beginPath(); ctx.ellipse(u.x, u.y + 1, 12 * u.s, 3 * u.s, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(u.x, u.y + 1 + (u.fly || 0), 12 * u.s * (u.fly ? 0.8 : 1), 3 * u.s, 0, 0, TAU); ctx.fill();
       if (u.alive && u.buffT > 0) {
         ctx.strokeStyle = 'rgba(251,146,60,.85)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.ellipse(u.x, u.y + 1, 15 * u.s, 4 * u.s, 0, 0, TAU); ctx.stroke();
@@ -1088,7 +1108,9 @@ class Battle {
     const list = this.units.slice().sort((a, b) => a.y - b.y || (a.alive - b.alive));
     for (const u of list) {
       if (u.x < cam - 120 || u.x > cam + VIEW_W + 120) continue;
-      if (u.def.structure) this.drawStructure(ctx, u, t);
+      if (u.burrowed) this.drawMound(ctx, u, t);
+      else if (u.def.sprite === 'generator') this.drawGenerator(ctx, u, t);
+      else if (u.def.structure) this.drawStructure(ctx, u, t);
       else if (u.def.sprite === 'fish') this.drawFishUnit(ctx, u, t);
       else Stick.drawUnit(ctx, u, t);
     }
@@ -1096,8 +1118,8 @@ class Battle {
     for (const u of this.units) if (u.alive) for (const m of fxList(u)) if (m.draw) m.draw(this, ctx, u, t, 'over');
     // health bars
     for (const u of list) {
-      if (!u.alive || u.hp >= u.maxHp || u === this.boss || u.x < cam - 50 || u.x > cam + VIEW_W + 50) continue;
-      const w = 26 * Math.sqrt(u.s), y = u.y - 76 * u.s - (u.def.look.head && u.def.look.head.includes('wizhat') ? 14 : 0);
+      if (!u.alive || u.burrowed || u.hp >= u.maxHp || u === this.boss || u.x < cam - 50 || u.x > cam + VIEW_W + 50) continue;
+      const w = 26 * Math.sqrt(u.s), y = u.y - 76 * u.s - (u.def.look.head && u.def.look.head.includes('wizhat') ? 14 : 0) - (u.def.sprite === 'generator' ? 50 : 0);
       ctx.fillStyle = 'rgba(30,20,15,.75)'; ctx.fillRect(u.x - w / 2 - 1, y - 1, w + 2, 5);
       ctx.fillStyle = u.team === 0 ? '#4ade80' : '#f87171';
       ctx.fillRect(u.x - w / 2, y, w * Math.max(0, u.hp / u.maxHp), 3);
@@ -1116,6 +1138,7 @@ class Battle {
       ctx.lineJoin = 'round';
     }
     ctx.globalAlpha = 1;
+    if (this.wind || this.dark) this.drawRulesOver(ctx, t, cam, dt);
     // base hp labels in world
     for (const b of [this.pBase, this.eBase]) {
       if (b.invuln || b.destroyed) continue;

@@ -60,26 +60,51 @@ const UI = (() => {
   function click() { Sound.play('click', 0.02); }
 
   // ---------------- map ----------------
+  const campOf = n => (LEVELS[n - 1] && LEVELS[n - 1].c) || 1;
+  const campUnlocked = c => { const C = CAMPAIGNS[c - 1]; return !C.unlockAfter || !!Save.d.cleared[C.unlockAfter]; };
+  let mapCamp = null, pendingLevel = null;
   function buildMap() {
+    if (mapCamp == null) mapCamp = campOf(Progress.frontier());
+    Game.mapCamp = mapCamp;
     const wrap = $('#map-nodes');
     wrap.innerHTML = '';
-    REGIONS.forEach((r, i) => {
+    REGIONS.filter(r => r.campaign === mapCamp).forEach((r, i) => {
       const lbl = U.el('div', 'region-label', r.name);
       lbl.style.left = i * 320 + 160 + 'px';
       wrap.appendChild(lbl);
     });
-    LEVELS.forEach(L => {
-      const n = U.el('button', 'node' + (L.boss ? ' boss' : ''));
+    const tabs = U.el('div', 'camp-tabs');
+    for (const C of CAMPAIGNS) {
+      const open = campUnlocked(C.id);
+      const t = U.el('button', 'camp-tab' + (C.id === mapCamp ? ' active' : '') + (open ? '' : ' locked'),
+        `<small>CAMPAIGN ${C.id}</small>${open ? C.name : `${ICON.lock} ${C.name}`}`);
+      t.style.setProperty('--cc', C.color);
+      t.addEventListener('click', () => {
+        if (!open) { Sound.play('error'); toast(`Clear Level ${C.unlockAfter}: ${LEVELS[C.unlockAfter - 1].name} to unlock`); return; }
+        if (mapCamp === C.id) return;
+        click(); mapCamp = C.id; buildMap(); refreshMap();
+      });
+      tabs.appendChild(t);
+    }
+    wrap.appendChild(tabs);
+    LEVELS.filter(L => L.c === mapCamp).forEach(L => {
+      const n = U.el('button', 'node' + (L.boss ? ' boss' : '') + (L.c > 1 ? ' c' + L.c : ''));
       n.style.left = L.map[0] + 'px'; n.style.top = L.map[1] + 'px';
       n.dataset.n = L.n;
       n.addEventListener('click', () => {
-        if (!Progress.isLevelUnlocked(L.n)) { Sound.play('error'); toast(`Clear level ${L.n - 1} first!`); return; }
+        if (!Progress.isLevelUnlocked(L.n)) { Sound.play('error'); toast(`Clear level ${LEVELS[L.n - 2].label} first!`); return; }
         click(); openLevel(L);
       });
       wrap.appendChild(n);
     });
   }
   function refreshMap() {
+    if (campUnlocked(2) && !Save.d.c2seen) {
+      Save.d.c2seen = true; Save.save();
+      mapCamp = 2; buildMap();
+      setTimeout(() => { toast('New campaign unlocked: Beyond the Margin!'); Sound.play('unlock'); }, 300);
+    }
+    if (pendingLevel) { const L = pendingLevel; pendingLevel = null; setTimeout(() => openLevel(L), 120); }
     const front = Progress.frontier();
     $$('#map-nodes .node').forEach(n => {
       const num = +n.dataset.n, L = LEVELS[num - 1];
@@ -88,7 +113,7 @@ const UI = (() => {
       n.classList.toggle('cleared', cleared);
       n.classList.toggle('current', unlocked && !cleared && num === front);
       const st = Save.d.stars[num] || 0;
-      n.innerHTML = unlocked ? `${num}<div class="node-stars">${STAR(st >= 1)}${STAR(st >= 2)}${STAR(st >= 3)}</div>` : `<div class="lock">${ICON.lock}</div>`;
+      n.innerHTML = unlocked ? `${num - CAMPAIGNS[L.c - 1].first + 1}<div class="node-stars">${STAR(st >= 1)}${STAR(st >= 2)}${STAR(st >= 3)}</div>` : `<div class="lock">${ICON.lock}</div>`;
       n.title = L.name;
     });
     const eb = $('#btn-endless');
@@ -101,10 +126,53 @@ const UI = (() => {
     if (L.boss) list.push(L.boss);
     return list;
   }
+  const traitsOf = def => TRAITS.filter(k => def[k] && TRAIT_INFO[k]);
+  /** How well the current squad answers each gimmick. */
+  function deckCheck(L, traits) {
+    const defs = Progress.roster().filter(r => r.unlocked).map(r => r.def);
+    const count = f => defs.filter(f).length;
+    const out = [];
+    const add = (icon, label, n, need, tip) => out.push({ icon, label, n, ok: n >= need, tip });
+    if (traits.includes('fly')) add('\u2708', 'Anti-air', count(isAntiAir), 2, 'Ranged units and Lancers hit flyers');
+    if (traits.includes('phase')) add('\u2726', 'Magic', count(isMagic), 1, 'Magic hits faded Phantoms');
+    if (traits.includes('guard')) add('\u2694', 'Melee', count(d => d.range < 120 && d.dmg > 0), 3, 'Melee ignores Phalanx shields');
+    if (traits.includes('plate')) add('\u{1F528}', 'Heavy hitters', count(d => d.dmg >= 45 || d.crit), 2, 'Big hits and crits punch through plating');
+    if (traits.includes('split')) add('\u2735', 'Area damage', count(d => d.attack === 'area' || d.aoe || d.attack === 'bomb' || d.attack === 'magic' || d.attack === 'pierce'), 2, 'Area attacks clear split Blots');
+    if (L.rules && L.rules.dark) add('\u2600', 'Light-bearers', count(d => lightOf(d) > 0), 1, 'Light lets your army see farther');
+    if (L.rules && L.rules.costCap) { const over = count(d => d.cost > L.rules.costCap); out.push({ icon: '\u{1F4B0}', label: 'Over budget', n: over, ok: over === 0, tip: 'These units can\'t be summoned here', invert: true }); }
+    return out;
+  }
+  function renderBrief(L) {
+    const box = $('#lc-brief'), card = $('#level-card');
+    const traits = [...new Set(enemyTypesOf(L).flatMap(id => traitsOf(ENEMIES[id])))];
+    const rules = Object.keys(L.rules || {}).filter(k => RULE_INFO[k]);
+    const on = !L.endless && (traits.length || rules.length || L.tip);
+    card.classList.toggle('wide', !!on);
+    box.classList.toggle('hidden', !on);
+    if (!on) return;
+    let html = '<div class="lb-title">BATTLE BRIEFING</div>';
+    for (const k of rules) { const R = RULE_INFO[k]; html += `<div class="lb-row rule" style="--rc:${R.color}"><span class="lb-ic">${R.icon}</span><div><b>${R.name}</b>${R.text(L)}</div></div>`; }
+    const chk = deckCheck(L, traits);
+    if (chk.length) {
+      html += '<div class="lb-sub">YOUR DECK <button class="lb-edit">Edit Deck &#9654;</button></div><div class="lb-check">';
+      for (const c of chk) html += `<span class="lb-chip ${c.ok ? 'ok' : 'bad'}" title="${c.tip}">${c.icon} ${c.label} <b>${c.n}</b> ${c.ok ? '&#10003;' : c.invert ? '&#9888;' : '&#10007;'}</span>`;
+      html += '</div>';
+    }
+    if (L.tip) html += `<div class="lb-tip"><b>TIP</b> ${L.tip}</div>`;
+    if (traits.length) html += '<div class="lb-sub">ENEMY TRAITS</div>';
+    for (const k of traits) {
+      const T = TRAIT_INFO[k], who = enemyTypesOf(L).filter(id => ENEMIES[id][k]).map(id => ENEMIES[id].name).join(', ');
+      html += `<div class="lb-row" style="--rc:${T.color}"><span class="lb-ic">${T.icon}</span><div><b>${T.name}</b> <small>${who}</small><br>${T.text}</div></div>`;
+    }
+    box.innerHTML = html;
+    const ed = box.querySelector('.lb-edit');
+    if (ed) ed.addEventListener('click', () => { click(); overlay('ov-level', false); pendingLevel = L; bkTab = 'deck'; show('barracks'); });
+  }
   function openLevel(L) {
     currentLevel = L;
     const reg = L.endless ? 'Bonus Mode' : REGIONS.find(r => r.theme === L.theme).name;
-    $('#lc-num').textContent = L.n;
+    $('#lc-num').textContent = L.endless ? 'E' : L.label;
+    $('#lc-num').classList.toggle('c2', L.c === 2);
     $('#lc-name').textContent = L.name;
     $('#lc-region').textContent = reg;
     const st = L.endless ? 0 : Save.d.stars[L.n] || 0;
@@ -116,6 +184,7 @@ const UI = (() => {
       const box = U.el('div', 'lc-enemy' + (def.boss ? ' boss' : ''));
       const cv = U.el('canvas'); cv.width = 66; cv.height = 58;
       box.appendChild(cv); box.appendChild(document.createTextNode(def.name));
+      for (const k of traitsOf(def)) { const T = TRAIT_INFO[k], tb = U.el('span', 'lc-trait', T.icon); tb.title = `${T.name}: ${T.text}`; tb.style.background = T.color; box.appendChild(tb); }
       en.appendChild(box);
       Stick.renderIcon(cv, def, 1, { w: 66, h: 58, scale: def.boss ? 0.78 : def.scale > 1.2 ? 0.88 : 0.95 });
     }
@@ -131,6 +200,7 @@ const UI = (() => {
       chip(`Reward <b>${first ? L.xp : Math.round(L.xp * 0.35)}</b> XP${first ? ' (first clear)' : ''}`);
       if (L.unlock && first) chip(`Unlocks <b style="color:#d14d00">${UNIT_BY_ID[L.unlock].name}</b>`);
     }
+    renderBrief(L);
     overlay('ov-level', true);
   }
 
@@ -172,7 +242,7 @@ const UI = (() => {
     const kind = def.attack === 'heal' ? 'Healer' : def.range > 120 ? 'Ranged' : def.attack === 'area' ? 'Area' : 'Melee';
     const body = U.el('div', null, `
       <div class="uc-name${name.length > 13 ? ' long' : ''}">${name}<span class="uc-lv">${unlocked ? 'LV ' + lv : ''}</span></div>
-      <div class="uc-role">${def.role} &middot; ${kind}</div>
+      <div class="uc-role">${def.role} &middot; ${kind}${unlocked ? unitTagsHtml(def) : ''}</div>
       <div class="uc-stats">
         ${statRow('HP', def.hp * m, mn ? def.hp * mn : null)}
         ${def.attack === 'heal' ? statRow('Heal', def.heal * m, mn ? def.heal * mn : null) : statRow('DMG', def.dmg * m, mn ? def.dmg * mn : null)}
@@ -297,7 +367,7 @@ const UI = (() => {
     const def = formOf(id), lv = Evo.level(id);
     const m = def.hero ? Meta.heroMult(lv) : Progress.unitMult(lv);
     box.className = def.hero ? 'r-' + def.rarity : '';
-    box.innerHTML = `<div class="di-name">${def.name}${EvoUI.badge(def)} <small>${def.hero ? RARITY[def.rarity].name + ' · ' : ''}${def.role} · Lv ${lv}</small></div>
+    box.innerHTML = `<div class="di-name">${def.name}${EvoUI.badge(def)}${unitTagsHtml(def)} <small>${def.hero ? RARITY[def.rarity].name + ' · ' : ''}${def.role} · Lv ${lv}</small></div>
       <div class="di-ab">${def.ability || def.desc}${def.evoMove ? `<br><b style="color:${def.evoMove.color}">&#10022; ${def.evoMove.desc}</b>` : ''}</div>
       <div class="di-stats">HP <b>${U.fmt(def.hp * m)}</b> · ${def.attack === 'heal' ? 'Heal' : 'DMG'} <b>${U.fmt((def.attack === 'heal' ? def.heal : def.dmg) * m)}</b> · Range <b>${def.range}</b> · Cost <b>${def.cost}</b> · CD <b>${def.cd}s</b></div>
       <div class="di-hint">${dkSel.id ? 'Now tap a deck slot to place it.' : 'Tap a unit below to swap it into this slot, or another slot to swap places.'}</div>`;
@@ -347,7 +417,7 @@ const UI = (() => {
     show('battle');
     tip = L.n === 1 && !Save.d.tutorial ? { step: 0, t: 0 } : null;
     $('#tip').classList.add('hidden');
-    banner(L.name, 'gold', L.endless ? 'Survive as long as you can!' : `Level ${L.n}`);
+    banner(L.name, 'gold', L.endless ? 'Survive as long as you can!' : `Level ${L.label}${L.rules ? ' · ' + Object.keys(L.rules).map(k => RULE_INFO[k].name).join(' · ') : ''}`);
   }
   function buildSlots(b) {
     const wrap = $('#slots');
@@ -362,6 +432,7 @@ const UI = (() => {
         ${def.evolved ? '<span class="evo-star">&#10022;</span>' : ''}<span class="nm">${r ? def.short : '???'}</span><span class="cost">${r ? `<i class="coin"></i>${def.cost}` : '&nbsp;'}</span>
         ${r ? '<div class="cdov"></div><div class="cdt"></div>' : `<div class="lk">${ICON.lock}</div>`}`;
       Stick.renderIcon(el.querySelector('canvas'), def, 0, { w: 76, h: 66, scale: def.scale > 1.5 ? 0.8 : 0.9 });
+      if (r && b.rules.costCap && def.cost > b.rules.costCap) { el.classList.add('banned'); el.insertAdjacentHTML('beforeend', '<div class="ban">OVER<br>BUDGET</div>'); }
       const s = { el, def, unlocked: !!r, cdov: el.querySelector('.cdov'), cdt: el.querySelector('.cdt'), last: {} };
       el.addEventListener('pointerdown', e => { e.preventDefault(); trySummon(s); });
       wrap.appendChild(el);
@@ -381,6 +452,8 @@ const UI = (() => {
       if (res === 'gold') toast('Not enough gold!');
       else if (res === 'cooldown') toast('Still recharging...');
       else if (res === 'cap') toast('Army is full!');
+      else if (res === 'army') toast(`Army limit: only ${b.rules.unitCap} stickmen at once!`);
+      else if (res === 'banned') toast(`Over budget: only units costing ${b.rules.costCap} or less`);
     }
   }
   function tryWallet() {
@@ -399,7 +472,7 @@ const UI = (() => {
   function togglePause(force) {
     const b = Game.battle; if (!b || b.state === 'end') return;
     b.paused = force != null ? force : !b.paused;
-    $('#pause-level').textContent = b.L.endless ? `Endless Arena · Wave ${b.waveIdx}` : `Level ${b.L.n} · ${b.L.name}`;
+    $('#pause-level').textContent = b.L.endless ? `Endless Arena · Wave ${b.waveIdx}` : `Level ${b.L.label} · ${b.L.name}`;
     overlay('ov-pause', b.paused);
   }
   function toggleSpeed() {
@@ -424,6 +497,19 @@ const UI = (() => {
     hud.boss.classList.add('hidden');
     const sp = $('#btn-speed'); sp.textContent = '1x'; sp.classList.remove('fast');
     hud.enLabel.textContent = b.endless ? 'ENEMY PORTAL' : 'ENEMY FORTRESS';
+    hud.rules = $('#rule-hud'); hud.rules.innerHTML = '';
+  }
+  function ruleHud(b) {
+    return b.ruleStatus().map(r => {
+      if (r.id === 'wind') return r.state === 'calm'
+        ? `<span class="rh wind">${RULE_INFO.wind.icon} ${r.next === 'tail' ? 'Tailwind' : 'Headwind'} in ${r.t}s</span>`
+        : `<span class="rh wind ${r.state}">${r.state === 'tail' ? '&#9654;&#9654; TAILWIND' : '&#9664;&#9664; HEADWIND'} ${r.t}s</span>`;
+      if (r.id === 'generators') return r.left ? `<span class="rh gen">&#9889; Generators ${r.left}/${r.total}</span>` : '<span class="rh gen down">&#9889; Shield down!</span>';
+      if (r.id === 'unitCap') return `<span class="rh cap${r.n >= r.cap ? ' full' : ''}">${RULE_INFO.unitCap.icon} Army ${r.n}/${r.cap}</span>`;
+      if (r.id === 'costCap') return `<span class="rh budget">${RULE_INFO.costCap.icon} Budget ${r.cap}</span>`;
+      if (r.id === 'dark') return r.lift ? '<span class="rh dark lit">&#9728; Lit up!</span>' : `<span class="rh dark">${RULE_INFO.dark.icon} Darkness</span>`;
+      return '';
+    }).join('');
   }
   function set(key, val, fn) { if (hud.last[key] !== val) { hud.last[key] = val; fn(val); } }
 
@@ -481,6 +567,7 @@ const UI = (() => {
     set('bossVis', bossAlive, v => hud.boss.classList.toggle('hidden', !v));
     if (bossAlive) set('boss', Math.ceil(b.boss.hp), v => (hud.bossFill.style.width = (100 * v) / b.boss.maxHp + '%'));
     b.renderMinimap(hud.mmCtx, 380, 26);
+    set('rules', ruleHud(b), v => (hud.rules.innerHTML = v));
     if (tip) updateTip(b, dt);
   }
 
@@ -771,5 +858,5 @@ const UI = (() => {
     EvoUI.tick(dt, t);
   }
 
-  return { init, tick, show, toast, startBattle, overlay, togglePause };
+  return { init, tick, show, toast, startBattle, overlay, togglePause, openLevel };
 })();

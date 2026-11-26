@@ -588,6 +588,7 @@ const Stick = (() => {
     },
   };
 
+  const FACE = {};
   function face(c, o) {
     const look = o.look, f = look.face;
     if (o.dead) {
@@ -595,6 +596,7 @@ const Stick = (() => {
       for (const ex of [2.8, 6.2]) { seg(c, ex - 1.3, -2.8, ex + 1.3, -0.2, c.strokeStyle, 1.2); seg(c, ex - 1.3, -0.2, ex + 1.3, -2.8, c.strokeStyle, 1.2); }
       return;
     }
+    if (f && FACE[f]) { FACE[f](c, o); return; }
     if (f === 'ninja') {
       c.save(); c.beginPath(); c.arc(0, 0, HR, 0, TAU); c.clip();
       c.fillStyle = '#f5f5f4'; c.fillRect(0, -3.6, HR + 1, 4.2); c.restore();
@@ -716,10 +718,10 @@ const Stick = (() => {
   function drawUnit(ctx, u, t) {
     const d = u.def;
     unitPose(u, t, _pose);
-    _o.x = u.x; _o.y = u.y; _o.s = u.s; _o.dir = u.dir; _o.pose = _pose; _o.look = d.look; _o.def = d;
+    _o.x = u.x; _o.y = u.y + (u.fly ? Math.sin(t * 3 + u.seed) * 5 : 0); _o.s = u.s; _o.dir = u.dir; _o.pose = _pose; _o.look = d.look; _o.def = d;
     _o.team = u.team; _o.t = t; _o.flash = u.flash > 0; _o.state = u.state;
     _o.atkU = u.state === 'attack' ? u.atkT / u.animDur : -1; _o.dead = !u.alive; _o.color = d.color; _o.seed = u.seed;
-    _o.alpha = (u.alive ? 1 : U.clamp(1 - (u.deadT - 0.35) / 0.55, 0, 1)) * (u.spectral ? 0.62 : 1);
+    _o.alpha = (u.alive ? 1 : U.clamp(1 - (u.deadT - 0.35) / 0.55, 0, 1)) * (u.spectral ? 0.62 : 1) * (u.phased ? 0.3 + 0.08 * Math.sin(t * 9) : 1);
     _o.stun = u.stunT > 0 && u.alive;
     if (_o.alpha <= 0) return;
     draw(ctx, _o);
@@ -766,5 +768,5 @@ const Stick = (() => {
   /* Registries other modules can extend with new designs. */
   const LAYER = {}, WPN_BACK = {};
   const H = { circ, seg, poly, limb, inHand, torsoPt, mixHex, bombShape };
-  return { draw, drawUnit, drawPreview, renderIcon, unitPose, ANIMS, KB_DUR, HR, WPN, WPN_BACK, HEAD, BACK, OFF, LAYER, H, P, S, STANCE };
+  return { draw, drawUnit, drawPreview, renderIcon, unitPose, ANIMS, KB_DUR, HR, WPN, WPN_BACK, HEAD, BACK, OFF, LAYER, FACE, H, P, S, STANCE };
 })();

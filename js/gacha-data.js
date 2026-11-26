@@ -223,7 +223,10 @@ const QUEST_BONUS = 60;  // for finishing all three
 const ACHIEVEMENTS = [
   { id: 'clear1', name: 'First Victory', text: 'Clear level 1', goal: 1, reward: 100, progress: s => Object.keys(s.cleared).length },
   { id: 'clear6', name: 'Desert Conqueror', text: 'Clear 6 levels', goal: 6, reward: 200, progress: s => Object.keys(s.cleared).length },
-  { id: 'clear12', name: 'Shadow Slayer', text: 'Clear all 12 levels', goal: 12, reward: 500, progress: s => Object.keys(s.cleared).length },
+  { id: 'clear12', name: 'Shadow Slayer', text: 'Clear all 12 levels of Campaign 1', goal: 12, reward: 500, progress: s => Object.keys(s.cleared).filter(n => n <= 12).length },
+  { id: 'c2first', name: 'Beyond the Margin', text: 'Clear the first level of Campaign 2', goal: 1, reward: 200, progress: s => (s.cleared[13] ? 1 : 0) },
+  { id: 'c2half', name: 'Gimmick Breaker', text: 'Clear 6 Campaign 2 levels', goal: 6, reward: 400, progress: s => Object.keys(s.cleared).filter(n => n > 12).length },
+  { id: 'c2all', name: 'Master of the Margin', text: 'Clear all 12 levels of Campaign 2', goal: 12, reward: 1500, progress: s => Object.keys(s.cleared).filter(n => n > 12).length },
   { id: 'stars', name: 'Perfectionist', text: 'Earn 36 stars', goal: 36, reward: 400, progress: s => Object.values(s.stars).reduce((a, b) => a + b, 0) },
   { id: 'kills500', name: 'Stick Smasher', text: 'Defeat 500 enemies', goal: 500, reward: 150, progress: s => s.life.kills || 0 },
   { id: 'kills3000', name: 'Army of One', text: 'Defeat 3,000 enemies', goal: 3000, reward: 300, progress: s => s.life.kills || 0 },

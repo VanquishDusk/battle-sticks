@@ -43,6 +43,7 @@ const THEMES = {
 
 const Scenery = (() => {
   const OUT = '#2b2118';
+  const DECOR = {}, WEATHER = {};
 
   function mk(w, h, res) {
     const c = document.createElement('canvas');
@@ -104,10 +105,10 @@ const Scenery = (() => {
         const layers = [[0, -16, 30, 34], [0, -36, 24, 30], [0, -54, 17, 26]];
         for (const [lx, ly, w, h] of layers) {
           ctx.beginPath(); ctx.moveTo(lx - w, ly); ctx.lineTo(lx, ly - h); ctx.lineTo(lx + w, ly); ctx.closePath();
-          ctx.fillStyle = th === THEMES.night ? '#1f3a4a' : '#2f6b4f'; ctx.fill(); ctx.stroke();
+          ctx.fillStyle = th.pine || (th === THEMES.night ? '#1f3a4a' : '#2f6b4f'); ctx.fill(); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(lx - w * 0.45, ly - h * 0.55); ctx.lineTo(lx, ly - h); ctx.lineTo(lx + w * 0.45, ly - h * 0.55);
           ctx.quadraticCurveTo(lx, ly - h * 0.42, lx - w * 0.45, ly - h * 0.55);
-          ctx.fillStyle = th === THEMES.night ? '#8c8cd0' : '#ffffff'; ctx.fill();
+          ctx.fillStyle = th.pineCap || (th === THEMES.night ? '#8c8cd0' : '#ffffff'); ctx.fill();
         }
         break;
       }
@@ -133,6 +134,8 @@ const Scenery = (() => {
         }
         break;
       }
+      default:
+        if (DECOR[kind]) DECOR[kind](ctx, rng, th);
     }
     ctx.restore();
   }
@@ -192,6 +195,7 @@ const Scenery = (() => {
     if (th.farShape === 'mesa') { // a couple of distant pyramids
       for (let i = 0; i < Math.ceil(w / 700); i++) decor(ctx, 'pyramid', 200 + i * 700 + rng() * 200, base + 4, 0.9 + rng() * 0.4, rng, th);
     }
+    if (th.farExtra) th.farExtra(ctx, w, h, rng);
   }
 
   // ---------- mid hills ----------
@@ -311,6 +315,7 @@ const Scenery = (() => {
       hg.addColorStop(0, 'rgba(255,90,30,0)'); hg.addColorStop(1, 'rgba(255,110,40,.45)');
       ctx.fillStyle = hg; ctx.fillRect(0, 300, VIEW_W, 170);
     }
+    if (th.skyFx) th.skyFx(ctx, t);
   }
 
   // ---------- clouds & weather ----------
@@ -337,12 +342,13 @@ const Scenery = (() => {
   }
   function makeWeather(kind) {
     const list = [];
-    const n = kind === 'snow' ? 90 : kind === 'ember' ? 50 : kind === 'firefly' ? 30 : kind === 'dust' ? 26 : 0;
+    const n = WEATHER[kind] ? WEATHER[kind].n : kind === 'snow' ? 90 : kind === 'ember' ? 50 : kind === 'firefly' ? 30 : kind === 'dust' ? 26 : 0;
     for (let i = 0; i < n; i++) list.push({ x: Math.random() * VIEW_W, y: Math.random() * VIEW_H, r: Math.random(), p: Math.random() * TAU });
     return { kind, list };
   }
   function drawWeather(ctx, W, dt, t) {
     if (!W || !W.kind) return;
+    if (WEATHER[W.kind]) { WEATHER[W.kind].draw(ctx, W, dt, t); return; }
     for (const p of W.list) {
       if (W.kind === 'snow') {
         p.y += (30 + p.r * 50) * dt; p.x += Math.sin(t + p.p) * 20 * dt - 8 * dt;
@@ -565,7 +571,9 @@ const Scenery = (() => {
 
   // ---------- world map backdrop ----------
   const MapScene = (() => {
-    let cache = null, cacheRes = 0;
+    let cache = null, cacheRes = 0, cacheC = 0;
+    const regionsOf = c => REGIONS.filter(r => (r.campaign || 1) === c);
+    const levelsOf = c => LEVELS.filter(l => (l.c || 1) === c);
     const TOP = 74, BOT = 634;
 
     function region(th, rng, w) {
@@ -602,12 +610,13 @@ const Scenery = (() => {
       return R;
     }
 
-    function build(res) {
-      cacheRes = res;
+    function build(res, camp) {
+      cacheRes = res; cacheC = camp;
       const C = mk(VIEW_W, VIEW_H, res);
       const ctx = C.x;
       const pad = 50, rw = 320;
-      REGIONS.forEach((reg, i) => {
+      const REGS = regionsOf(camp), LVS = levelsOf(camp);
+      REGS.forEach((reg, i) => {
         const th = THEMES[reg.theme];
         const rng = U.rng(500 + i * 31);
         const R = region(th, rng, rw + pad * 2);
@@ -615,29 +624,29 @@ const Scenery = (() => {
         R.x.save(); R.x.globalCompositeOperation = 'destination-in';
         const mg = R.x.createLinearGradient(0, 0, rw + pad * 2, 0);
         mg.addColorStop(0, i === 0 ? '#000' : 'rgba(0,0,0,0)'); mg.addColorStop((pad * 1.6) / (rw + pad * 2), '#000');
-        mg.addColorStop(1 - (pad * 1.6) / (rw + pad * 2), '#000'); mg.addColorStop(1, i === REGIONS.length - 1 ? '#000' : 'rgba(0,0,0,0)');
+        mg.addColorStop(1 - (pad * 1.6) / (rw + pad * 2), '#000'); mg.addColorStop(1, i === REGS.length - 1 ? '#000' : 'rgba(0,0,0,0)');
         R.x.fillStyle = mg; R.x.fillRect(0, 0, rw + pad * 2, VIEW_H); R.x.restore();
         ctx.drawImage(R.c, 0, 0, R.c.width, R.c.height, i * rw - pad, 0, rw + pad * 2, VIEW_H);
       });
       // decor (avoid the level nodes)
-      const rng = U.rng(99);
-      const nodes = LEVELS.map(l => l.map);
+      const rng = U.rng(99 + camp);
+      const nodes = LVS.map(l => l.map);
       const props = [];
       for (let i = 0; i < 70; i++) {
         const x = 10 + rng() * 1260, y = 300 + rng() * 320;
         if (nodes.some(([nx, ny]) => Math.hypot(nx - x, ny - y) < 75)) continue;
-        if (pathDist(x, y) < 30) continue;
+        if (pathDist(x, y, LVS) < 30) continue;
         props.push([x, y]);
       }
       props.sort((a, b) => a[1] - b[1]);
       for (const [x, y] of props) {
-        const reg = REGIONS[Math.min(3, Math.floor(x / 320))];
+        const reg = REGS[Math.min(3, Math.floor(x / 320))];
         const th = THEMES[reg.theme];
         const kind = th.decor[(rng() * th.decor.length) | 0];
         decor(ctx, kind === 'pyramid' && rng() < 0.6 ? 'cactus' : kind, x, y, kind === 'pyramid' ? 0.5 : 0.42 + (y - 300) / 900, rng, th);
       }
       // path
-      const pts = LEVELS.map(l => l.map);
+      const pts = LVS.map(l => l.map);
       const trace = () => {
         ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
         for (let i = 1; i < pts.length; i++) {
@@ -650,9 +659,9 @@ const Scenery = (() => {
       trace(); ctx.setLineDash([2, 14]); ctx.strokeStyle = 'rgba(140,100,60,.8)'; ctx.lineWidth = 4; ctx.stroke(); ctx.setLineDash([]);
       cache = C;
     }
-    function pathDist(x, y) {
+    function pathDist(x, y, LVS) {
       let best = 1e9;
-      const pts = LEVELS.map(l => l.map);
+      const pts = LVS.map(l => l.map);
       for (let i = 1; i < pts.length; i++) {
         const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
         for (let k = 0; k <= 10; k++) { const t = k / 10; best = Math.min(best, Math.hypot(x - U.lerp(x0, x1, t), y - U.lerp(y0, y1, t))); }
@@ -661,13 +670,13 @@ const Scenery = (() => {
     }
     const clouds = Array.from({ length: 6 }, (_, i) => ({ x: i * 240, y: 110 + (i % 3) * 40, s: 0.5 + (i % 2) * 0.3, v: 8 + i * 2, span: 1700 }));
 
-    function render(ctx, t, dt, res, frontier) {
-      if (!cache || cacheRes !== res) build(res);
+    function render(ctx, t, dt, res, frontier, camp = 1) {
+      if (!cache || cacheRes !== res || cacheC !== camp) build(res, camp);
       ctx.drawImage(cache.c, 0, 0, cache.c.width, cache.c.height, 0, 0, VIEW_W, VIEW_H);
       drawClouds(ctx, clouds, { cloud: '#ffffff' }, 0, dt);
       // the hero marker on the current level
       const L = LEVELS[Math.min(LEVELS.length - 1, frontier - 1)];
-      if (L) {
+      if (L && (L.c || 1) === camp) {
         const [x, y] = L.map;
         const def = UNITS[0];
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + 50, y + 22, 14, 4, 0, 0, TAU); ctx.fill();
@@ -677,5 +686,5 @@ const Scenery = (() => {
     return { render, invalidate() { cache = null; } };
   })();
 
-  return { build, blit, drawSky, makeClouds, drawClouds, makeWeather, drawWeather, drawBase, decor, MapScene };
+  return { build, blit, drawSky, makeClouds, drawClouds, makeWeather, drawWeather, drawBase, decor, MapScene, DECOR, WEATHER };
 })();
